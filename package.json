@@ -1,0 +1,17 @@
+{
+  "name": "boardgames-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Modular board game platform (pass-and-play now, multiplayer-ready architecture)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "vite build --mode single",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}

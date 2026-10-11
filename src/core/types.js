@@ -1,0 +1,80 @@
+/**
+ * The contract between the platform and games.
+ * To add a new game, just satisfy the types below. No platform code changes needed.
+ */
+
+/**
+ * @typedef {Object} Player
+ * @property {string} id      Unique player ID (maps to a server-side user id in the future)
+ * @property {string} name
+ * @property {string} [color]
+ */
+
+/**
+ * Game manifest (manifest.js). It is loaded synchronously by the lobby to render
+ * cards, so keep it lightweight and never import the game implementation here.
+ *
+ * @typedef {Object} GameManifest
+ * @property {string} id
+ * @property {string} title
+ * @property {string} [subtitle]
+ * @property {string} description
+ * @property {{min:number,max:number}} players
+ * @property {'playable'|'wip'|'coming-soon'} status
+ * @property {string} [icon]      Emoji or SVG string
+ * @property {string} [accent]    Theme color (any CSS color)
+ * @property {string[]} [tags]
+ * @property {number} [order]     Lobby sort order (lower first, default 100)
+ */
+
+/**
+ * @typedef {Object} GameStatus
+ * @property {boolean} isOver
+ * @property {string|null} currentPlayerId  Whose turn it is (null once the game is over)
+ * @property {string|null} winnerId         null = no winner yet / draw
+ * @property {string} [message]
+ */
+
+/**
+ * Game rules: pure functions with no DOM access, so they can later be moved as-is
+ * to a Node server and used as the authoritative rules.
+ *
+ * @typedef {Object} GameRules
+ * @property {(ctx:{players:Player[]}) => any} setup
+ *     Create the initial state.
+ * @property {(state:any, action:any, playerId:string) => {ok:boolean, error?:string}} validate
+ *     Check whether a player's action is legal.
+ * @property {(state:any, action:any, playerId:string) => any} reduce
+ *     Apply the action and return a NEW state (never mutate the input).
+ * @property {(state:any) => GameStatus} getStatus
+ */
+
+/**
+ * @typedef {Object} GameViewApi
+ * @property {Player[]} players
+ * @property {() => any} getState
+ * @property {(action:any, playerId?:string) => void} dispatch
+ *     Send an action. When playerId is omitted, Pass-and-Play uses the current turn's player.
+ * @property {'local'|'online'} mode
+ * @property {string|null} localPlayerId   In online mode, the player this device represents
+ *                                         (null for local pass-and-play)
+ * @property {() => void} exit             Leave the game and return to the lobby
+ */
+
+/**
+ * Game view: only renders state and turns user input into actions.
+ *
+ * @typedef {Object} GameView
+ * @property {(state:any) => void} update   Called whenever the state changes
+ * @property {() => void} destroy           Cleanup on unmount (listeners, timers, ...)
+ */
+
+/**
+ * Game module (default export of games/<id>/index.js)
+ *
+ * @typedef {Object} GameModule
+ * @property {GameRules} rules
+ * @property {(container:HTMLElement, api:GameViewApi) => GameView} mount
+ */
+
+export {};
