@@ -32,7 +32,7 @@ function cardIcon(kind, rot) {
   );
 }
 
-const MIN_SIZE = 14; // zoom limits, in pixels per cell
+const MIN_SIZE = 5; // zoom limits, in pixels per cell (5 lets a phone show a big chunk of the 100x100 grid)
 const MAX_SIZE = 96;
 const DEFAULT_SIZE = 56;
 
@@ -87,8 +87,17 @@ export function mount(container, api) {
   const hint = el('div', { class: 'cc__hint muted' });
 
   const canvas = el('canvas', { class: 'cc__canvas' });
-  const recenterBtn = el('button', { class: 'btn btn--ghost cc__recenter', onclick: () => { recenter(); scheduleDraw(); } }, 'Recenter');
-  const boardWrap = el('div', { class: 'cc__board' }, canvas, recenterBtn);
+  // On-screen zoom buttons: they work everywhere, even where pinch gestures are unreliable.
+  const zoomButton = (label, title, onclick) =>
+    el('button', { class: 'btn btn--ghost cc__zbtn', title, 'aria-label': title, onclick }, label);
+  const zoomBar = el(
+    'div',
+    { class: 'cc__zoom' },
+    zoomButton('−', 'Zoom out', () => zoomBy(1 / 1.4)),
+    zoomButton('+', 'Zoom in', () => zoomBy(1.4)),
+    zoomButton('Fit', 'Fit all cards on screen', () => { recenter(); scheduleDraw(); }),
+  );
+  const boardWrap = el('div', { class: 'cc__board' }, canvas, zoomBar);
 
   // The icons are redrawn in refresh() so they follow the current rotation.
   const straightIcon = el('span', { class: 'cc__icon' });
@@ -133,7 +142,7 @@ export function mount(container, api) {
       el('li', {}, 'Close the circuit to win: every line end on the board must connect to another, with nothing sticking out. A square or rectangle works, a single line does not.'),
       el('li', {}, 'Instead of placing cards you can challenge with "No solution!". The other player then gets extra time and 1 to 3 cards to close the circuit. If they manage it they win, otherwise you do.'),
       el('li', {}, 'Run out of time and you lose the game. Player 1 starts the first game, player 2 the next, and so on.'),
-      el('li', {}, 'Controls: click or tap a cell to place · Rotate button (R or right-click) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel or pinch to zoom. Red dots mark open line ends.'),
+      el('li', {}, 'Controls: click or tap a cell to place · Rotate button (R or right-click) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel, pinch or the − / + buttons to zoom · Fit shows every card. Red dots mark open line ends.'),
     ),
   );
 
@@ -225,8 +234,14 @@ export function mount(container, api) {
     Math.floor((py - cssH / 2) / cam.size + cam.cy),
   ];
 
+  /** Zoom around the middle of the view. */
+  function zoomBy(factor) {
+    cam.size = Math.max(MIN_SIZE, Math.min(MAX_SIZE, cam.size * factor));
+    scheduleDraw();
+  }
+
   function recenter() {
-    const pieces = state ? Object.values(state.board) : [];
+    const pieces = state ? [...Object.values(state.board), ...draft] : [];
     if (!pieces.length) {
       const c = state ? centerCell(state.options.gridSize) : 50;
       cam.cx = cam.cy = c + 0.5;
@@ -507,6 +522,12 @@ export function mount(container, api) {
   const pairMetrics = ([a, b]) => ({ dist: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] });
 
   canvas.addEventListener('pointerdown', (e) => {
+    // The first finger of a gesture is "primary". Drop any stale pointers a missed
+    // pointerup/cancel may have left behind, so a single finger is never mistaken for a pinch.
+    if (e.isPrimary) {
+      pointers.clear();
+      pinch = null;
+    }
     try {
       canvas.setPointerCapture(e.pointerId);
     } catch {
@@ -598,6 +619,9 @@ export function mount(container, api) {
     },
     { passive: false },
   );
+  // Belt and braces for browsers that ignore `touch-action: none`: never let a touch on the
+  // board scroll or page-zoom the whole site.
+  canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     // A long-press on a touch screen also fires this; only a real right-click should rotate.
