@@ -205,6 +205,7 @@ $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';'
 - The Cursor in-editor browser **cannot open `file://` URLs**. Test against `http://localhost:5173` (dev) or `http://localhost:4173` (preview), or the live URL. If the first `browser_navigate` leaves you on `about:blank`, create a new tab (`browser_tabs` with `action: new`) and navigate again.
 - A leftover dev server may hold port 5173 (Vite then silently falls back to 5174). Check for running processes before assuming a port.
 - `npm audit` currently reports 0 vulnerabilities.
+- **Build stamp:** every page footer shows `v<package version> · build <git commit> · <UTC time>` (`src/core/buildInfo.js`, values injected by `define` in `vite.config.js`; CI uses `GITHUB_SHA`). Dev servers say "dev build". When Mason reports "the live site looks old", ask him to read this stamp and compare it with `git rev-parse --short=7 HEAD` (browsers and phones cache aggressively). Bump `version` in `package.json` for notable releases.
 
 ---
 
