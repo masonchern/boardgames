@@ -85,6 +85,9 @@ export function mount(container, api) {
   // Each card type remembers its own rotation, so rotating one never changes the other.
   const rots = { straight: 0, turn: 0 };
   const currentRot = () => rots[kind];
+  // Advanced mode: every hand card has its own rotation, so Rotate only turns the selected card.
+  let cardRots = {}; // cardId -> rotation
+  const rotOf = (card) => cardRots[card.id] ?? 0;
   let hover = null; // { x, y } cell under the pointer
   let showOpenEnds = true;
   let timeoutSentFor = null;
@@ -279,7 +282,7 @@ export function mount(container, api) {
       if (!card) return { problem: handCovered() ? 'Show your cards first' : 'Pick a card from your hand first' };
       if (card.type === 'cross') return { item: { x, y, kind: 'cross', cardId: card.id } };
       if (card.type === 'limit') return { problem: 'The Limit card has no cell: tap it again to use or remove it' };
-      return { item: { x, y, kind: card.type, rot: rots[card.type], cardId: card.id } };
+      return { item: { x, y, kind: card.type, rot: rotOf(card), cardId: card.id } };
     }
     if (inPool() && poolLeft()[kind] <= 0) return { problem: `No ${kind} cards left in the deck` };
     return { item: { x, y, kind, rot: currentRot() } };
@@ -335,7 +338,16 @@ export function mount(container, api) {
     refresh();
   }
   function rotate() {
-    // Only the selected card type turns; the other one stays as it was
+    if (inHandPlay()) {
+      // Advanced hand play: only the selected card turns, never any other card of the same type
+      const card = selectedCard();
+      if (card && isLineType(card.type)) {
+        cardRots[card.id] = (rotOf(card) + 1) % CARD_KINDS[card.type].rotations;
+        refresh();
+      }
+      return;
+    }
+    // Normal mode and face-up deck: only the selected card type turns; the other one stays as it was
     rots[kind] = (rots[kind] + 1) % CARD_KINDS[kind].rotations;
     refresh();
   }
@@ -750,7 +762,7 @@ export function mount(container, api) {
   function handCard(card) {
     const selected = card.id === selectedCardId;
     const used = usedCardIds().has(card.id);
-    const face = card.type === 'limit' ? '✋' : cardIcon(card.type, card.type === 'cross' ? 0 : rots[card.type]);
+    const face = card.type === 'limit' ? '✋' : cardIcon(card.type, card.type === 'cross' ? 0 : rotOf(card));
     return el(
       'button',
       {
@@ -991,6 +1003,7 @@ export function mount(container, api) {
       if (!previous || previous.gameNumber !== next.gameNumber) {
         draft = [];
         selectedCardId = null;
+        cardRots = {}; // card ids restart with every game
         recenter();
       } else if (turnKey() !== `${previous.gameNumber}:${previous.turnNumber}:${previous.phase}`) {
         draft = [];
