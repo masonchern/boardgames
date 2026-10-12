@@ -4,7 +4,7 @@ import { el } from '../../core/dom.js';
 const ROWS = [
   ['Sound effects', 'Play sounds for moves and results'],
   ['Music', 'Background music in the lobby'],
-  ['Theme', 'Dark (default), light, and more'],
+  ['Theme', 'Light (default), dark, and more'],
 ];
 
 export function renderSettings() {

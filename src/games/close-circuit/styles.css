@@ -1,6 +1,8 @@
-/* Close Circuit styles (loaded with the game view) */
+/* Close Circuit styles (loaded with the game view). Light theme:
+   blue boxes = status, brown boxes = controls/board, green = success, orange = challenge. */
 .cc { display: grid; gap: 14px; }
 
+/* ---- Header: players, timer, banner ---- */
 .cc__hud { display: grid; grid-template-columns: 1fr minmax(220px, 320px) 1fr; gap: 14px; align-items: stretch; }
 .cc__player {
   --pc: var(--primary);
@@ -8,20 +10,22 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--pc) 35%, #ffffff);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--pc) 10%, #ffffff);
   transition: all 0.3s var(--ease);
 }
 .cc__player:last-child { flex-direction: row-reverse; text-align: right; }
 .cc__player.is-active {
   border-color: var(--pc);
-  background: color-mix(in srgb, var(--pc) 14%, transparent);
-  box-shadow: 0 0 22px color-mix(in srgb, var(--pc) 28%, transparent);
+  border-width: 2px;
+  padding: 11px 15px;
+  background: color-mix(in srgb, var(--pc) 22%, #ffffff);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pc) 30%, transparent);
 }
 .cc__dot { width: 14px; height: 14px; border-radius: 50%; background: var(--pc); }
 .cc__pname { font-weight: 700; }
-.cc__wins { margin-left: auto; font-size: 1.9rem; font-weight: 800; color: var(--pc); }
+.cc__wins { margin-left: auto; font-size: 1.9rem; font-weight: 800; color: var(--text); }
 .cc__player:last-child .cc__wins { margin-left: 0; margin-right: auto; }
 
 .cc__center { display: grid; align-content: center; gap: 8px; text-align: center; }
@@ -29,47 +33,61 @@
 .cc__timer {
   position: relative;
   height: 30px;
+  border: 1px solid var(--blue-400);
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--blue-100);
 }
-.cc__timer-fill { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(90deg, #4fd1a5, #6c8cff); transition: width 0.12s linear; }
-.cc__timer.is-low .cc__timer-fill { background: linear-gradient(90deg, #ff5d5d, #ffb84d); }
-.cc__timer.is-unlimited .cc__timer-fill { background: rgba(255, 255, 255, 0.1); }
-.cc__timer-text { position: relative; line-height: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cc__timer-fill { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(90deg, #a8e6c8, #9ccbf7); transition: width 0.12s linear; }
+.cc__timer.is-low .cc__timer-fill { background: linear-gradient(90deg, #ff9d96, #ffcf8a); }
+.cc__timer.is-unlimited .cc__timer-fill { background: var(--blue-200); }
+.cc__timer-text { position: relative; line-height: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .cc__banner {
   --pc: var(--primary);
   padding: 10px 16px;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--pc) 50%, transparent);
-  background: color-mix(in srgb, var(--pc) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pc) 45%, #ffffff);
+  background: color-mix(in srgb, var(--pc) 14%, #ffffff);
   text-align: center;
   font-weight: 700;
 }
-.cc__banner.is-challenge { border-color: #ffb84d; background: rgba(255, 184, 77, 0.14); color: #ffd28a; }
-.cc__banner.is-over { border-color: #4fd1a5; background: rgba(79, 209, 165, 0.14); }
+.cc__banner.is-challenge { border-color: #e0a458; background: #ffeccb; }
+.cc__banner.is-over { border-color: var(--green-500); background: var(--green-100); }
 
+/* ---- Board: a smooth wooden surface in a wooden frame ---- */
 .cc__board {
   position: relative;
   height: clamp(420px, 60vh, 720px);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  border: 6px solid #8a5a2d;
+  border-radius: 18px;
   overflow: hidden;
-  background: #0a0c12;
+  background: #b98a57;
+  box-shadow: inset 0 0 0 2px rgba(255, 233, 196, 0.45), inset 0 0 18px rgba(60, 30, 5, 0.35), 0 8px 18px rgba(90, 55, 20, 0.25);
 }
 .cc__canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
 .cc__canvas.is-panning { cursor: grabbing; }
 .cc__zoom { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
-.cc__zbtn { min-width: 40px; padding: 6px 12px; font-size: 1.05rem; font-weight: 700; line-height: 1.2; background: rgba(18, 21, 31, 0.85); }
+.cc__zbtn { min-width: 40px; padding: 6px 12px; font-size: 1.05rem; font-weight: 700; line-height: 1.2; background: rgba(255, 250, 240, 0.92); border-color: #c9a572; }
 
 .cc__hint { min-height: 1.4em; text-align: center; }
-.cc__hint.is-error { color: #ff8a8a; }
-.cc__hint.is-good { color: #4fd1a5; font-weight: 700; }
+.cc__hint.is-error { color: #b3261e; font-weight: 600; }
+.cc__hint.is-good { color: #12583a; font-weight: 700; }
 
-.cc__controls { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: center; }
+/* ---- Controls (light brown box) ---- */
+.cc__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border: 1px solid var(--brown-200);
+  border-radius: 16px;
+  background: var(--brown-100);
+}
 .cc__group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.cc__kinds { display: inline-flex; padding: 4px; gap: 4px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
+.cc__kinds { display: inline-flex; padding: 4px; gap: 4px; border: 1px solid var(--brown-200); border-radius: 12px; background: var(--brown-50); }
 .cc__kind {
   display: inline-flex;
   align-items: center;
@@ -78,21 +96,22 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: var(--muted);
+  color: #4a4036;
   font-weight: 600;
   transition: all 0.2s var(--ease);
 }
 .cc__icon { display: inline-flex; line-height: 0; }
-.cc__kind:hover { color: var(--text); }
-.cc__kind.is-selected { background: rgba(108, 140, 255, 0.22); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+.cc__kind:hover { background: #ffffff; }
+.cc__kind.is-selected { background: var(--blue-200); color: var(--text); box-shadow: inset 0 0 0 2px var(--primary); }
 .cc__count { min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
 .cc__toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 
-.cc__result { display: grid; justify-items: center; gap: 4px; padding: 14px; border: 1px solid #4fd1a5; border-radius: 14px; background: rgba(79, 209, 165, 0.08); }
+/* ---- Result and help ---- */
+.cc__result { display: grid; justify-items: center; gap: 4px; padding: 14px; border: 1px solid var(--green-500); border-radius: 14px; background: var(--green-100); }
 .cc__result-msg { font-size: 1.2rem; font-weight: 800; }
 
-.cc__how { color: var(--muted); font-size: 0.92rem; }
-.cc__how summary { cursor: pointer; font-weight: 600; color: var(--text); }
+.cc__how { padding: 10px 14px; border: 1px solid var(--brown-200); border-radius: 14px; background: var(--brown-50); color: #333; font-size: 0.92rem; }
+.cc__how summary { cursor: pointer; font-weight: 700; color: var(--text); }
 .cc__how ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.5; }
 
 /* Phones: compact header, board sized to the screen, big full-width controls. */
@@ -101,13 +120,14 @@
   .cc__hud { grid-template-columns: 1fr 1fr; gap: 8px; }
   .cc__center { grid-column: 1 / -1; order: -1; gap: 4px; }
   .cc__player { gap: 8px; padding: 8px 12px; border-radius: 12px; }
+  .cc__player.is-active { padding: 7px 11px; }
   .cc__wins { font-size: 1.5rem; }
   .cc__player .muted { display: none; }
   .cc__banner { padding: 7px 10px; font-size: 0.95rem; }
-  .cc__board { height: clamp(240px, calc(100dvh - 440px), 640px); border-radius: 12px; }
+  .cc__board { height: clamp(240px, calc(100dvh - 440px), 640px); border-width: 4px; border-radius: 14px; }
   .cc__hint { min-height: 1.2em; font-size: 0.85rem; }
 
-  .cc__controls { display: grid; gap: 8px; }
+  .cc__controls { display: grid; gap: 8px; padding: 10px; }
   .cc__group { flex-wrap: wrap; gap: 8px; }
   .cc__group > .btn { flex: 1; padding: 8px 10px; font-size: 0.9rem; }
   .cc__kinds { flex: 2; }
@@ -115,4 +135,3 @@
   .cc__count { flex-basis: 100%; min-width: 0; text-align: center; }
   .cc__toggle { justify-content: center; min-height: 32px; }
 }
-

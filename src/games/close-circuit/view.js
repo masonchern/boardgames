@@ -26,8 +26,8 @@ function cardIcon(kind, rot) {
   }
   return (
     '<svg viewBox="0 0 24 24" width="30" height="30" fill="none">' +
-    '<rect x="0.75" y="0.75" width="22.5" height="22.5" rx="3" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>' +
-    `<path d="${path}" stroke="currentColor" stroke-width="4.5"/>` +
+    '<rect x="0.75" y="0.75" width="22.5" height="22.5" rx="5" fill="#fff6e0" stroke="#b08457" stroke-width="1.5"/>' +
+    `<path d="${path}" stroke="#3f8fe0" stroke-width="4.5"/>` +
     '</svg>'
   );
 }
@@ -46,7 +46,17 @@ const FIT_MARGIN = 2; // empty tiles kept around the played cards by the "Fit" b
  */
 export function mount(container, api) {
   const players = api.players;
-  const colors = { [players[0].id]: '#6c8cff', [players[1].id]: '#ff6b9a' };
+  const colors = { [players[0].id]: '#3f8fe0', [players[1].id]: '#e8607f' };
+  // Each player has their own team of cute animals riding on their cards. The animal on a
+  // card is picked from its cell, so it stays the same on every redraw (pure decoration).
+  const teams = {
+    [players[0].id]: ['🐱', '🐻', '🐼', '🐨', '🐥', '🐰'],
+    [players[1].id]: ['🐶', '🦊', '🐷', '🐸', '🐯', '🐵'],
+  };
+  const animalFor = (piece, ownerId) => {
+    const team = teams[ownerId] ?? teams[players[0].id];
+    return team[Math.abs(piece.x * 31 + piece.y * 17) % team.length];
+  };
 
   // ---- View-local state (not game state) ----
   let state = null;
@@ -286,24 +296,47 @@ export function mount(container, api) {
     ][dir];
   }
 
-  /** Draw one card: a tile with a line (straight) or a quarter-circle (turn) between its two ends. */
-  function drawPiece(ctx, piece, color, { alpha = 1, dashed = false, glow = false } = {}) {
+  function roundedRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  /**
+   * Draw one card: a cream tile with a colored track (straight line or quarter-circle turn)
+   * between its two ends, and a cute animal on a round badge (on the track for straights,
+   in the open part of the tile for turns so the curve stays visible).
+   */
+  function drawPiece(ctx, piece, color, { alpha = 1, dashed = false, glow = false, owner = piece.owner } = {}) {
     const s = cam.size;
     const [sx, sy] = toScreen(piece.x, piece.y);
     if (sx > cssW || sy > cssH || sx + s < 0 || sy + s < 0) return;
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    ctx.fillRect(sx + 1, sy + 1, s - 2, s - 2);
-    if (glow || dashed) {
-      ctx.strokeStyle = glow ? 'rgba(255,255,255,0.4)' : color;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash(dashed ? [5, 4] : []);
-      ctx.strokeRect(sx + 1.5, sy + 1.5, s - 3, s - 3);
-      ctx.setLineDash([]);
-    }
 
+    // The tile: soft cream with a little shadow, like a wooden game piece
+    const pad = Math.max(1, s * 0.03);
+    ctx.shadowColor = 'rgba(70, 35, 8, 0.35)';
+    ctx.shadowBlur = s * 0.1;
+    ctx.shadowOffsetY = s * 0.04;
+    roundedRect(ctx, sx + pad, sy + pad, s - 2 * pad, s - 2 * pad, s * 0.2);
+    ctx.fillStyle = '#fff6e0';
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.lineWidth = glow ? Math.max(2.5, s * 0.06) : Math.max(1.5, s * 0.035);
+    ctx.strokeStyle = dashed ? color : glow ? '#f2b01e' : 'rgba(150, 100, 50, 0.55)';
+    ctx.setLineDash(dashed ? [5, 4] : []);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // The track (runs to the cell edges so neighbouring cards connect seamlessly)
     ctx.strokeStyle = color;
     ctx.lineWidth = Math.max(3, s * 0.2);
     ctx.lineCap = 'butt';
@@ -311,6 +344,8 @@ export function mount(container, api) {
     const [a, b] = pieceEnds(piece.kind, piece.rot);
     const [ax, ay] = edgeMid(sx, sy, s, a);
     const [bx, by] = edgeMid(sx, sy, s, b);
+    let mx = sx + s / 2; // where the animal sits (middle of the track for straight cards)
+    let my = sy + s / 2;
     if (piece.kind === 'straight') {
       ctx.moveTo(ax, ay);
       ctx.lineTo(bx, by);
@@ -324,8 +359,32 @@ export function mount(container, api) {
       while (d > Math.PI) d -= 2 * Math.PI;
       while (d < -Math.PI) d += 2 * Math.PI;
       ctx.arc(cornerX, cornerY, s / 2, a1, a2, d < 0);
+      // The curve hugs its corner, so the animal sits in the open part of the tile instead,
+      // out of the way of the curve.
+      mx = cornerX + (cornerX === sx ? 1 : -1) * s * 0.66;
+      my = cornerY + (cornerY === sy ? 1 : -1) * s * 0.66;
     }
     ctx.stroke();
+    // Soft highlight along the track
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.lineWidth = Math.max(1, s * 0.07);
+    ctx.stroke();
+
+    // The animal, on a little round badge (skipped when zoomed far out: too small to see)
+    if (s >= 22) {
+      ctx.beginPath();
+      ctx.arc(mx, my, s * (piece.kind === 'straight' ? 0.27 : 0.22), 0, Math.PI * 2);
+      ctx.fillStyle = '#fffdf6';
+      ctx.fill();
+      ctx.lineWidth = Math.max(1.5, s * 0.04);
+      ctx.strokeStyle = color;
+      ctx.stroke();
+      ctx.font = `${Math.round(s * (piece.kind === 'straight' ? 0.36 : 0.3))}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#000000';
+      ctx.fillText(animalFor(piece, owner), mx, my + s * 0.02);
+    }
     ctx.restore();
   }
 
@@ -335,7 +394,11 @@ export function mount(container, api) {
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#0a0c12';
+    // Table around the board: darker wood
+    const table = ctx.createLinearGradient(0, 0, cssW, cssH);
+    table.addColorStop(0, '#c49662');
+    table.addColorStop(1, '#a8794a');
+    ctx.fillStyle = table;
     ctx.fillRect(0, 0, cssW, cssH);
 
     const g = state.options.gridSize;
@@ -347,12 +410,22 @@ export function mount(container, api) {
     ctx.beginPath();
     ctx.rect(gx, gy, g * s, g * s);
     ctx.clip();
-    ctx.fillStyle = '#10131c';
+    // Playing surface: smooth light wood (like a xiangqi board) with a soft sheen
+    const wood = ctx.createLinearGradient(0, 0, cssW, cssH);
+    wood.addColorStop(0, '#f0d6a6');
+    wood.addColorStop(0.5, '#e8c78f');
+    wood.addColorStop(1, '#dcb578');
+    ctx.fillStyle = wood;
+    ctx.fillRect(gx, gy, g * s, g * s);
+    const sheen = ctx.createRadialGradient(cssW * 0.3, cssH * 0.2, 0, cssW * 0.3, cssH * 0.2, Math.max(cssW, cssH) * 0.8);
+    sheen.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
+    sheen.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = sheen;
     ctx.fillRect(gx, gy, g * s, g * s);
 
     const [vx0, vy0] = toCell(0, 0);
     const [vx1, vy1] = toCell(cssW, cssH);
-    ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+    ctx.strokeStyle = 'rgba(105, 60, 25, 0.38)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = Math.max(0, vx0); x <= Math.min(g, vx1 + 1); x++) {
@@ -371,53 +444,61 @@ export function mount(container, api) {
     if (boardIsEmpty() && !draft.length && state.phase !== 'over') {
       const c = centerCell(g);
       const [cx, cy] = toScreen(c, c);
-      ctx.fillStyle = 'rgba(108,140,255,0.16)';
+      ctx.fillStyle = 'rgba(255, 246, 215, 0.6)';
       ctx.fillRect(cx, cy, s, s);
-      ctx.strokeStyle = 'rgba(108,140,255,0.8)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(cx + 1, cy + 1, s - 2, s - 2);
+      ctx.strokeStyle = '#b4691f';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(cx + 1.5, cy + 1.5, s - 3, s - 3);
     }
     ctx.restore();
 
-    ctx.strokeStyle = 'rgba(108,140,255,0.35)';
-    ctx.lineWidth = 2;
+    // Board frame: a thick outer line and a thin inner line, like a xiangqi board
+    ctx.strokeStyle = '#6e4120';
+    ctx.lineWidth = 4;
     ctx.strokeRect(gx, gy, g * s, g * s);
+    ctx.strokeStyle = 'rgba(110, 65, 32, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(gx + 6, gy + 6, g * s - 12, g * s - 12);
 
     // Cards on the board (green once the circuit is closed)
     const won = state.phase === 'over' && isWinningBoard(state.board, state.options);
     const recent = new Set(state.lastPlaced);
     for (const [key, piece] of Object.entries(state.board)) {
-      drawPiece(ctx, piece, won ? '#4fd1a5' : colors[piece.owner], { glow: recent.has(key) && state.phase !== 'over' });
+      drawPiece(ctx, piece, won ? '#2fa57a' : colors[piece.owner], { glow: recent.has(key) && state.phase !== 'over' });
     }
 
     const active = state.phase !== 'over';
-    const me = colors[actorId()] ?? '#ffffff';
+    const meId = actorId();
+    const me = colors[meId] ?? '#3f8fe0';
 
     // Cards drafted this turn
-    for (const piece of draft) drawPiece(ctx, piece, me, { alpha: 0.85, dashed: true });
+    for (const piece of draft) drawPiece(ctx, piece, me, { alpha: 0.9, dashed: true, owner: meId });
 
     // Ghost under the pointer
     if (active && hover && draft.length < maxDraft()) {
       const candidate = { x: hover.x, y: hover.y, kind, rot: currentRot() };
       const problem = placementProblem(state, draft, candidate);
       if (!problem) {
-        drawPiece(ctx, candidate, me, { alpha: 0.4 });
+        drawPiece(ctx, candidate, me, { alpha: 0.5, owner: meId });
       } else if (hover.x >= 0 && hover.y >= 0 && hover.x < g && hover.y < g) {
         const [hx, hy] = toScreen(hover.x, hover.y);
-        ctx.fillStyle = 'rgba(255,93,93,0.14)';
+        ctx.fillStyle = 'rgba(210, 50, 50, 0.22)';
         ctx.fillRect(hx, hy, s, s);
       }
     }
 
     // Open ends: line ends that do not connect to anything
     if (showOpenEnds) {
-      ctx.fillStyle = '#ff5d5d';
+      ctx.fillStyle = '#e5484d';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
       for (const end of openEnds(mergedBoard())) {
         const [sx, sy] = toScreen(end.x, end.y);
         const [ex, ey] = edgeMid(sx, sy, s, end.dir);
         ctx.beginPath();
-        ctx.arc(ex, ey, Math.max(2.5, s * 0.07), 0, Math.PI * 2);
+        ctx.arc(ex, ey, Math.max(3, s * 0.08), 0, Math.PI * 2);
         ctx.fill();
+        ctx.stroke();
       }
     }
   }

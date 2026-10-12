@@ -15,7 +15,7 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 ### Goals (from the spec)
 1. **Plug-and-play games.** Adding a game must not require changing platform code.
 2. **Future online multiplayer through a server.** Phase 1 is local "pass-and-play" (one device, players take turns), but the architecture must not hard-code that. A WebSocket server must be addable later without rewriting games.
-3. **High-quality modern UI.** Dark theme, card layout, smooth transitions.
+3. **High-quality modern UI.** Bright light theme (Mason asked for it: white page background, black text, boxes in light blue / light brown by function), card layout, smooth transitions. Colors are CSS variables at the top of `src/platform/styles/main.css` (`--blue-*` interface, `--brown-*` games and boards, `--green-*`/`--red-*` status). Keep text black or near-black.
 
 ### Current state (Phase 1, done)
 - Sidebar tabs: **Games** (lobby), **Account** (guest placeholder, buttons disabled), **Settings** (placeholder rows).
@@ -238,5 +238,6 @@ Separate loops all count as closed; deck empty with no closed circuit = draw; ti
 - Cards are data: `CARD_KINDS` in `circuit.js` lists each kind's rotations and line ends. The win condition is the single function `isWinningBoard(board, options)`. Option values like `gridSize`, `deckSize`, `maxPerTurn` already exist in `state.options` but are not exposed in the UI.
 - **Advanced mode (Mason plans to add later):** new card kinds (e.g. crossings, T-pieces) go in `CARD_KINDS`; new win conditions (e.g. single loop, minimum size) go in `isWinningBoard`. A selectable variant could be added as another manifest option.
 - Rendering is a `<canvas>` with pan (drag), zoom (wheel), hotkeys (R rotate, T toggle kind, Z undo), and a live "open ends" overlay (red dots). Each card kind remembers its own rotation (`rots` in `view.js`): Rotate only turns the selected kind, and the Straight/Turn buttons preview their current rotation.
+- **Look (set by Mason):** the board is drawn like a xiangqi (Chinese chess) board, i.e. smooth light-brown wood with thin dark-brown grid lines, a double frame line and a wooden border (`.cc__board`). Cards are cream rounded tiles with a pastel track in the owner's color (blue / rose) and a cute animal emoji on a round badge. Each player has an animal team (`teams` in `view.js`); the animal is chosen from the cell coordinates, so it is pure decoration and never part of game state. Animals are skipped below 22px per cell. Emoji rendering depends on the device's emoji font.
 - **Mobile:** the UI is responsive (CSS breakpoint 760px, plus `pointer: coarse` for tap-sized buttons), not device-sniffed. On phones the top nav hides while a game is open (`.shell.is-in-game`), the board height follows `100dvh`, and the controls become full-width rows. The canvas uses pointer events: tap places a card, one-finger drag pans, two-finger pinch zooms (the `pointers`/`pinch` logic in `view.js`); long-press does not rotate (only a real right-click does). Test with phone emulation (e.g. 390x780) before shipping UI changes.
 - Players are still `Player 1` / `Player 2` (no custom names yet).
