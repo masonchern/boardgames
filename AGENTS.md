@@ -19,10 +19,8 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 
 ### Current state (Phase 1, done)
 - Sidebar tabs: **Games** (lobby), **Account** (guest placeholder, buttons disabled), **Settings** (placeholder rows).
-- Lobby shows 4 cards:
-  - **Close Circuit**: Mason's own invented game, fully playable (see section 11). The most complex game, and the best example of the plugin contract with options, timers and a canvas view.
-  - **Tic-Tac-Toe**: fully playable, 2-player pass-and-play (the minimal reference implementation for new games).
-  - **Secret Game A** (`wip`) and **Secret Game B** (`coming-soon`): placeholders that show "Game under development. Coming soon!".
+- Lobby shows one game: **Close Circuit**, Mason's own invented game, fully playable (see section 11). It is also the reference example of the plugin contract (options, timers, canvas view). The earlier Tic-Tac-Toe sample and the two "Secret Game" placeholders were removed at Mason's request (still in git history, commit before "Remove sample and placeholder games").
+- The platform still supports `status: 'wip'` / `'coming-soon'` manifests (greyed-out lobby cards) for future games.
 - Deployed to GitHub Pages with auto-deploy on push to `main`.
 - Unit tests for Close Circuit's rules (`npm test`), run in CI before every deploy.
 
@@ -30,7 +28,7 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 - Real accounts / login (Account tab is a stub).
 - Real settings (sound, music, theme).
 - A game server and a `WebSocketTransport` (online mode).
-- Close Circuit "advanced mode" (see section 11), and the real games to replace the Secret Game placeholders.
+- Close Circuit "advanced mode" (see section 11), and more games.
 - Tests beyond Close Circuit's rules (nothing covers the platform or the views).
 
 ---
@@ -48,7 +46,7 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 
 - **Vanilla JavaScript (ES modules)**, **no framework**, **no TypeScript**. Types are documented with JSDoc `@typedef` in `src/core/types.js`.
 - **Vite 8** for dev server and build. The only dev dependency is `vite`.
-- **Hash routing** (`#/games/tic-tac-toe`), so it works on any static host, including GitHub Pages sub-paths.
+- **Hash routing** (`#/games/close-circuit`), so it works on any static host, including GitHub Pages sub-paths.
 - Plain CSS with custom properties. Platform styles live in `src/platform/styles/main.css`; each game has its own `styles.css` imported by its `view.js`.
 - Node.js 24 LTS, npm 11.
 
@@ -84,8 +82,6 @@ src/
     styles/main.css         Platform shell styles
   games/                    One self-contained folder per game (nothing else lives here)
     close-circuit/          Mason's game: SPEC.txt, manifest.js, circuit.js, rules.js, rules.test.js, view.js, styles.css, index.js
-    tic-tac-toe/            Minimal reference game: manifest.js, rules.js, view.js, styles.css, index.js
-    secret-game-a/, secret-game-b/   Placeholders (manifest.js + index.js exporting null)
 ```
 
 ---
@@ -119,18 +115,16 @@ Each game is a folder in `src/games/<id>/`:
 `mount(container, api)` returns `{ update(state), destroy() }`. `api` = `{ players, getState, dispatch(action, playerId?), mode, localPlayerId, exit }`. In pass-and-play, omitting `playerId` in `dispatch` acts as the current turn's player.
 
 ### How to add a new game
-1. Create `src/games/<id>/manifest.js` and `src/games/<id>/index.js` (copy `tic-tac-toe` as a template).
+1. Create `src/games/<id>/manifest.js` and `src/games/<id>/index.js` (use `close-circuit` as the reference and `src/core/types.js` as the contract).
 2. Set `status: 'playable'` in the manifest once it works. Use `order` to control lobby position (lower first; default 100).
-3. Put the game's styles in `src/games/<id>/styles.css` and import it from the game's `view.js` (prefix class names with the game, e.g. `.ttt__`, `.cc__`). Put the game's spec or notes next to it in the same folder.
+3. Put the game's styles in `src/games/<id>/styles.css` and import it from the game's `view.js` (prefix class names with the game, e.g. `.cc__`). Put the game's spec or notes next to it in the same folder.
 4. **No registry or platform edits needed.** `import.meta.glob` finds the folder automatically.
-5. Placeholders (non-playable) still need an `index.js` that exports `null`. The loader globs it, but the platform never mounts non-playable games.
+5. A non-playable placeholder (`status: 'wip'` or `'coming-soon'`) still needs an `index.js` that exports `null`. The loader globs it, but the platform never mounts non-playable games.
 
 ### Known design decisions and gotchas
 - `gamePage.js` gives each game its own `game-root` div and removes the loading placeholder by reference. This avoids a race: the view mounts on the first state, which can arrive *before* the loader's `.then`. Do not replace this with `stage.replaceChildren()`.
 - `LocalTransport` ignores messages after `close()`. Session `destroy()` unsubscribes everything. Keep teardown paths intact (the shell calls the page's `destroy` on every route change).
 - Vite builds use `base: './'` (relative paths) so the site works both at a domain root and under `/boardgames/`.
-- Tic-Tac-Toe `RESET` is accepted from anyone at any time at the rules level. The UI only shows the button when the game is over. Tighten in `validate` if that matters.
-
 ---
 
 ## 6. Commands
@@ -217,8 +211,7 @@ $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';'
 ## 10. Quick verification checklist after any change
 
 1. `npm test` and `npm run build` complete without errors.
-2. `npm run dev`, then in the browser: lobby shows all games, Tic-Tac-Toe is playable (win detection works and "Play again" appears), Close Circuit plays through (setup screen, place cards, win, next game), and back-to-lobby works.
-3. Placeholder games show the "under development" message.
+2. `npm run dev`, then in the browser: lobby lists every game, Close Circuit plays through (setup screen, place cards, win, next game), and back-to-lobby works.
 4. Commit and push, then confirm the Actions run succeeded and the live URL reflects the change.
 
 ---
