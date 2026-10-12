@@ -172,6 +172,9 @@ user.email = 28799889+masonchern@users.noreply.github.com
 ```
 Do not replace it with a real email.
 
+### Standing instruction from Mason
+**Commit and push every change to `main` as part of finishing a task** (Mason said: "just push every change from now on"). Run `npm test` and `npm run build` first, since a push deploys to the live site. Then confirm the deploy succeeded. This covers ordinary changes only. Still ask before anything destructive or unusual (force-push, deleting branches or the repo, changing repo visibility or Pages settings).
+
 ### Publishing a change
 ```
 git add -A
