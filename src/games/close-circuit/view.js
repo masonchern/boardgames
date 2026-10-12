@@ -35,6 +35,7 @@ function cardIcon(kind, rot) {
 const MIN_SIZE = 5; // zoom limits, in pixels per cell (5 lets a phone show a big chunk of the 100x100 grid)
 const MAX_SIZE = 96;
 const DEFAULT_SIZE = 56;
+const FIT_MARGIN = 2; // empty tiles kept around the played cards by the "Fit" button
 
 /**
  * Close Circuit view: renders the state on a canvas and turns clicks into actions.
@@ -95,7 +96,7 @@ export function mount(container, api) {
     { class: 'cc__zoom' },
     zoomButton('−', 'Zoom out', () => zoomBy(1 / 1.4)),
     zoomButton('+', 'Zoom in', () => zoomBy(1.4)),
-    zoomButton('Fit', 'Fit all cards on screen', () => { recenter(); scheduleDraw(); }),
+    zoomButton('Fit', 'Zoom in to show all played cards plus a 2-tile border', () => { recenter(); scheduleDraw(); }),
   );
   const boardWrap = el('div', { class: 'cc__board' }, canvas, zoomBar);
 
@@ -142,7 +143,7 @@ export function mount(container, api) {
       el('li', {}, 'Close the circuit to win: every line end on the board must connect to another, with nothing sticking out. A square or rectangle works, a single line does not.'),
       el('li', {}, 'Instead of placing cards you can challenge with "No solution!". The other player then gets extra time and 1 to 3 cards to close the circuit. If they manage it they win, otherwise you do.'),
       el('li', {}, 'Run out of time and you lose the game. Player 1 starts the first game, player 2 the next, and so on.'),
-      el('li', {}, 'Controls: click or tap a cell to place · Rotate button (R or right-click) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel, pinch or the − / + buttons to zoom · Fit shows every card. Red dots mark open line ends.'),
+      el('li', {}, 'Controls: click or tap a cell to place · Rotate button (R or right-click) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel, pinch or the − / + buttons to zoom · Fit zooms in as far as possible while still showing every card plus a 2-tile border. Red dots mark open line ends.'),
     ),
   );
 
@@ -253,8 +254,10 @@ export function mount(container, api) {
     const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     cam.cx = (minX + maxX + 1) / 2;
     cam.cy = (minY + maxY + 1) / 2;
-    const fit = Math.min(cssW / (maxX - minX + 5), cssH / (maxY - minY + 5));
-    cam.size = Math.max(MIN_SIZE, Math.min(DEFAULT_SIZE, fit || DEFAULT_SIZE));
+    // Zoom in as far as possible while every card (including this turn's draft) stays visible
+    // with FIT_MARGIN empty tiles on each side. The tighter axis decides the zoom level.
+    const fit = Math.min(cssW / (maxX - minX + 1 + 2 * FIT_MARGIN), cssH / (maxY - minY + 1 + 2 * FIT_MARGIN));
+    cam.size = Math.max(MIN_SIZE, Math.min(MAX_SIZE, fit || DEFAULT_SIZE));
   }
 
   // ---- Drawing ----
