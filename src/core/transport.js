@@ -11,6 +11,9 @@
  *         Session and game code need no changes.
  */
 
+/** A fresh random 32-bit seed. Randomness lives here (the authority), never inside rules. */
+const randomSeed = () => Math.floor(Math.random() * 2 ** 32);
+
 /**
  * Local in-memory "fake server": validates and applies actions, then broadcasts the
  * new state asynchronously. The async hop intentionally mimics network behavior so
@@ -25,7 +28,7 @@ export class LocalTransport {
   constructor(rules, players, options = {}) {
     this.rules = rules;
     this.players = players;
-    this.state = rules.setup({ players, options, now: Date.now() });
+    this.state = rules.setup({ players, options, now: Date.now(), seed: randomSeed() });
     this.seq = 0;
     this.handlers = null;
     this.closed = false;
@@ -39,8 +42,9 @@ export class LocalTransport {
   send({ playerId, action }) {
     queueMicrotask(() => {
       if (this.closed) return;
-      // The authority stamps the time. A real server would do the same with its own clock.
-      const meta = { now: Date.now() };
+      // The authority stamps the time and a random seed (for shuffles). A real server would
+      // do the same with its own clock and randomness; rules themselves stay deterministic.
+      const meta = { now: Date.now(), seed: randomSeed() };
       const verdict = this.rules.validate(this.state, action, playerId, meta);
       if (!verdict.ok) {
         this.handlers?.onError(new Error(verdict.error || 'Invalid action'));

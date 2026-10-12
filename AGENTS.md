@@ -19,7 +19,7 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 
 ### Current state (Phase 1, done)
 - Sidebar tabs: **Games** (lobby), **Account** (guest placeholder, buttons disabled), **Settings** (placeholder rows).
-- Lobby shows one game: **Close Circuit**, Mason's own invented game, fully playable (see section 11). It is also the reference example of the plugin contract (options, timers, canvas view). The earlier Tic-Tac-Toe sample and the two "Secret Game" placeholders were removed at Mason's request (still in git history, commit before "Remove sample and placeholder games").
+- Lobby shows one game: **Close Circuit**, Mason's own invented game, fully playable in Normal and Advanced mode (see section 11). It is also the reference example of the plugin contract (options, timers, canvas view). The earlier Tic-Tac-Toe sample and the two "Secret Game" placeholders were removed at Mason's request (still in git history, commit before "Remove sample and placeholder games").
 - The platform still supports `status: 'wip'` / `'coming-soon'` manifests (greyed-out lobby cards) for future games.
 - Deployed to GitHub Pages with auto-deploy on push to `main`.
 - Unit tests for Close Circuit's rules (`npm test`), run in CI before every deploy.
@@ -28,7 +28,7 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 - Real accounts / login (Account tab is a stub).
 - Real settings (sound, music, theme).
 - A game server and a `WebSocketTransport` (online mode).
-- Close Circuit "advanced mode" (see section 11), and more games.
+- Tuning Close Circuit's new advanced mode after Mason plays it (section 11), and more games.
 - Tests beyond Close Circuit's rules (nothing covers the platform or the views).
 
 ---
@@ -108,9 +108,11 @@ Each game is a folder in `src/games/<id>/`:
 
 `rules` = `{ setup({players, options, now}), validate(state, action, playerId, meta) -> {ok, error?}, reduce(state, action, playerId, meta) -> newState (never mutate), getStatus(state) -> {isOver, currentPlayerId, winnerId, message} }`
 
-**Time:** rules must never call `Date.now()`. The authority (today `LocalTransport`, later the server) stamps every action with `meta.now` and gives `setup` a `now`. Rules store deadlines in state and compare against `meta.now`. This keeps rules deterministic and lets a server enforce time limits.
+**Time and randomness:** rules must never call `Date.now()` or `Math.random()`. The authority (today `LocalTransport`, later the server) stamps every action with `meta.now` and `meta.seed` (random 32-bit int) and gives `setup` a `now` and a `seed`. Rules store deadlines in state and compare against `meta.now`; shuffles use a seeded RNG (`makeRandom(seed)` in Close Circuit's `rules.js`). This keeps rules deterministic and lets a server enforce time limits and own the shuffle.
 
-**Pre-game options:** if a manifest declares `options: [{ id, label, description, type: 'number', default, min, max, step, unit }]`, the platform shows a generic setup screen (`platform/pages/gameSetup.js`) before the game starts and passes the chosen values to `rules.setup({ options })`. Games without `options` start immediately. An option with `unlimited: true` also gets a "No limit" checkbox; ticking it passes `null`, so rules must treat `null` as "no limit" (a missing value still means "use the default").
+**Hidden information:** the authoritative state contains everything (for example both hands). The view must only show what its player may see. In pass-and-play the Close Circuit view covers the hand at the start of each turn ("Pass the device..."). Online play will need per-player state redaction on the server.
+
+**Pre-game options:** if a manifest declares `options: [{ id, label, description, type, default, ... }]`, the platform shows a generic setup screen (`platform/pages/gameSetup.js`) before the game starts and passes the chosen values to `rules.setup({ options })`. Games without `options` start immediately. Two types exist: `number` (`min`, `max`, `step`, `unit`; with `unlimited: true` it also gets a "No limit" checkbox, and ticking it passes `null`, so rules must treat `null` as "no limit"; a missing value still means "use the default") and `select` (`choices: [{ value, label, description }]`, passes the chosen `value`).
 
 `mount(container, api)` returns `{ update(state), destroy() }`. `api` = `{ players, getState, dispatch(action, playerId?), mode, localPlayerId, exit }`. In pass-and-play, omitting `playerId` in `dispatch` acts as the current turn's player.
 
@@ -221,7 +223,18 @@ $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';'
 
 Spec source: `src/games/close-circuit/SPEC.txt` (English). Rules code: `src/games/close-circuit/rules.js` (heavily commented, with an ASSUMPTIONS list). Geometry and circuit detection: `circuit.js`. Canvas UI: `view.js`.
 
-### Rules as implemented (basic mode)
+There are two modes, chosen on the setup screen (`options.mode`: `normal` default, or `advanced`). Rules for both live in `rules.js`; advanced behaviour is gated on `state.options.mode === 'advanced'`. Tests: `rules.test.js` (normal) and `rules.advanced.test.js`.
+
+### Advanced mode (added Oct 2026, "let's see how it works out", expect tuning)
+- **Deck:** 80 cards, shuffled with the authority's seed: 48 straight, 24 turn, 4 **Limit**, 4 **Cross**. Constants in `ADVANCED` in `rules.js`. Each player holds **5** cards (`state.hands[playerId]`, cards are `{id, type}`) and refills to 5 after every turn until the deck (`state.deck`, drawn from the front) runs out.
+- **Turn:** play 1-3 cards from the hand (function cards count toward the 3, at least one must be a straight or turn). Each placement carries a `cardId`. **Limit**: the opponent's next turn must play exactly `min(3, straight/turn cards in hand)` straight/turn cards (`state.limitedPlayerId`, helper `limitRequirement`); a limited player cannot challenge or solve (can still resign). **Cross**: placement `{kind:'cross', x, y, cardId}` converts a straight already on the board (or placed earlier this turn) into a 4-ended intersection (`cross` in `CARD_KINDS`, cell keeps its owner).
+- **No line card in hand:** the hand is shuffled back into the deck and redrawn until it has one (automatic, `notice` explains). A player who still has none (deck has none left) skips; if neither can play the game is a draw (`no-cards`).
+- **Deck out (both modes):** players play what is left in their hands; draw if nobody can play. (Normal mode has no hands, so an empty deck is an immediate draw as before.)
+- **Challenge:** the challenged player plays from the face-up deck (`poolCounts(state)` = straights/turns left), any cards, any number, one attempt. The UI shows the remaining counts on the Straight/Turn buttons. **Solve** (`SOLVE` action): allowed on your turn when `deckRemaining <= ADVANCED.solveAtDeck` (22, our reading of "round 50"). Same face-up mechanics; success wins, failure/resign/timeout loses (`solve-*` results). `state.challengerId` holds the solver in that phase and `state.current` stays the solver.
+- **UI:** `view.js` shows the opponent's hand as card backs above the board (blue paw-print back = straight/turn, gold gift-box back = function card, so only the number of function cards leaks) and your hand face up below it. Tapping a line card selects it, a Cross card selects it (then tap a straight), a Limit card is toggled on/off. The view calls `rules.validate` before dispatching `PLAY` so mistakes (for example not playing 3 under Limit) show a message.
+- Not covered yet: per-player state redaction for online play, and no UI for the 22-card threshold other than the Solve button unlocking.
+
+### Rules as implemented (normal mode)
 - 2 players share ONE deck of 48 cards. Every card is placed as a **straight** line or a **90-degree turn**, in any rotation.
 - Each turn a player places **1 to 3** cards on a **100x100** grid, then ends the turn. The first card of a game goes in the **center cell** (50,50); every other card must **share an edge** with a card already on the board (including cards placed earlier in the same turn).
 - **Win:** after a placement, every line end on the board connects to a matching end of a neighbouring card (no loose ends). Whoever just placed wins. A single line is not closed; a square or rectangle is.
@@ -233,10 +246,10 @@ Spec source: `src/games/close-circuit/SPEC.txt` (English). Rules code: `src/game
 Separate loops all count as closed; deck empty with no closed circuit = draw; timeout in a normal turn = loss; resigning is allowed any time on your turn; a challenge is only allowed once the board has a card. Confirm these with Mason before building on them.
 
 ### Design notes
-- State, actions: `PLAY {placements:[{x,y,kind,rot}]}`, `CHALLENGE`, `CONCEDE`, `TIMEOUT`, `NEXT_GAME`. A whole turn is ONE atomic `PLAY`; the view keeps a local "draft" of placed-but-unsubmitted cards (Undo removes only the last, so adjacency always holds). The view uses the rules' own `placementProblem()` so UI and rules cannot disagree.
+- State, actions: `PLAY {placements:[{x,y,kind,rot,cardId?}]}`, `CHALLENGE`, `SOLVE` (advanced), `CONCEDE`, `TIMEOUT`, `NEXT_GAME`. A whole turn is ONE atomic `PLAY`; the view keeps a local "draft" of placed-but-unsubmitted cards (Undo removes only the last, so adjacency always holds). The view uses the rules' own `placementProblem()` so UI and rules cannot disagree.
 - The view dispatches `TIMEOUT` when its countdown hits zero; the rules accept it only if `meta.now >= state.deadline`. In online play the server must stamp time and be the one to enforce it.
 - Cards are data: `CARD_KINDS` in `circuit.js` lists each kind's rotations and line ends. The win condition is the single function `isWinningBoard(board, options)`. Option values like `gridSize`, `deckSize`, `maxPerTurn` already exist in `state.options` but are not exposed in the UI.
-- **Advanced mode (Mason plans to add later):** new card kinds (e.g. crossings, T-pieces) go in `CARD_KINDS`; new win conditions (e.g. single loop, minimum size) go in `isWinningBoard`. A selectable variant could be added as another manifest option.
+- **Extending:** new card kinds go in `CARD_KINDS` (and `LINE_KINDS` if they are plain line cards); new win conditions (e.g. single loop, minimum size) go in `isWinningBoard`.
 - Rendering is a `<canvas>` with pan (drag), zoom (wheel), hotkeys (R rotate, T toggle kind, Z undo), and a live "open ends" overlay (red dots). Each card kind remembers its own rotation (`rots` in `view.js`): Rotate only turns the selected kind, and the Straight/Turn buttons preview their current rotation.
 - **Look (set by Mason):** the board is drawn like a xiangqi (Chinese chess) board, i.e. smooth light-brown wood with thin dark-brown grid lines, a double frame line and a wooden border (`.cc__board`). Cards are cream rounded tiles with a pastel track in the owner's color (blue / rose) and a cute animal emoji on a round badge. Each player has an animal team (`teams` in `view.js`); the animal is chosen from the cell coordinates, so it is pure decoration and never part of game state. Animals are skipped below 22px per cell. Emoji rendering depends on the device's emoji font.
 - **Mobile:** the UI is responsive (CSS breakpoint 760px, plus `pointer: coarse` for tap-sized buttons), not device-sniffed. On phones the top nav hides while a game is open (`.shell.is-in-game`), the board height follows `100dvh`, and the controls become full-width rows. The canvas uses pointer events: tap places a card, one-finger drag pans, two-finger pinch zooms (the `pointers`/`pinch` logic in `view.js`); long-press does not rotate (only a real right-click does). Test with phone emulation (e.g. 390x780) before shipping UI changes.

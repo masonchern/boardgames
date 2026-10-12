@@ -4,7 +4,7 @@ export default {
   title: 'Close Circuit',
   subtitle: 'Original game',
   description:
-    'Two players share a deck of 48 line cards. Build a board with no loose ends and be the one to close the circuit, or call "no solution" and make your opponent prove otherwise.',
+    'Two players build one circuit from line cards. Leave no loose ends and be the one to close it, or call "no solution" and make your opponent prove otherwise. Play Normal, or Advanced with hands and function cards.',
   players: { min: 2, max: 2 },
   status: 'playable',
   order: 1,
@@ -13,6 +13,25 @@ export default {
   accent: '#ffb84d',
   tags: ['strategy', 'pass-and-play'],
   options: [
+    {
+      id: 'mode',
+      label: 'Game mode',
+      type: 'select',
+      default: 'normal',
+      choices: [
+        {
+          value: 'normal',
+          label: 'Normal',
+          description: 'One shared deck of 48 cards. Place straights and turns as you like.',
+        },
+        {
+          value: 'advanced',
+          label: 'Advanced',
+          description:
+            'Hands of 5 cards, 72 line cards plus function cards (Limit, Cross), face-up solving and "solve" late in the game.',
+        },
+      ],
+    },
     {
       id: 'turnSeconds',
       label: 'Time per turn',

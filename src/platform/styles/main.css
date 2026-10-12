@@ -294,6 +294,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .field__nolimit { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font-size: 0.9rem; white-space: nowrap; cursor: pointer; }
 .field__input { flex-wrap: wrap; justify-content: flex-end; }
 
+/* Select option on the setup screen: big radio-style buttons */
+.field--choices { flex-direction: column; align-items: stretch; }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.choice {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 2px solid var(--blue-200);
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: left;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.choice:hover { background: var(--blue-50); }
+.choice.is-selected { border-color: var(--primary); background: #dcecfd; }
+.choice__label { font-weight: 800; }
+.choice__desc { color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+
 /* Two-step confirm state for destructive buttons */
 .btn.is-armed { background: var(--red-100); border-color: var(--red-500); }
 
@@ -320,6 +338,7 @@ button, summary, label { touch-action: manipulation; -webkit-tap-highlight-color
   .game-stage, .page--wide .game-stage { min-height: 0; padding: 10px; border-radius: 16px; }
   .setup { padding: 8px 0; }
   .field { flex-wrap: wrap; }
+  .choices { grid-template-columns: 1fr; }
   .field__input { justify-content: flex-start; }
   .panel { padding: 8px 16px; }
   .setting-row { flex-wrap: wrap; }

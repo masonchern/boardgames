@@ -4,13 +4,14 @@
  *
  * Model
  * - The board is an object keyed by "x,y": { x, y, kind, rot, owner, turn }.
- * - Every card has exactly two "ends", each pointing at one of the four sides of its cell.
+ * - Every card has a list of "ends", each pointing at one of the four sides of its cell
+ *   (straights and turns have two; the advanced-mode crossing has all four).
  * - Two neighbouring cards are connected when their facing ends match
  *   (e.g. my EAST end meets the neighbour's WEST end).
  *
- * Extension point for "advanced mode": add new card kinds to CARD_KINDS
- * (the circuit logic below works with any card that lists its ends),
- * or change `isWinningBoard` to apply different win conditions.
+ * Extension point: add new card kinds to CARD_KINDS (the circuit logic below works with any
+ * card that lists its ends; advanced mode's crossing "cross" is one), or change
+ * `isWinningBoard` to apply different win conditions.
  */
 
 // Directions, clockwise from north.
@@ -39,7 +40,15 @@ export const CARD_KINDS = {
     // 90-degree turn; each rotation turns it clockwise by a quarter
     ends: (rot) => [[N, E], [E, S], [S, W], [W, N]][rot % 4],
   },
+  cross: {
+    // Advanced mode: a straight turned into an intersection (+). All four sides must connect.
+    rotations: 1,
+    ends: () => [N, E, S, W],
+  },
 };
+
+/** Card kinds that can be placed from a hand or the deck (the rest are function cards). */
+export const LINE_KINDS = ['straight', 'turn'];
 
 export const pieceEnds = (kind, rot) => CARD_KINDS[kind].ends(rot);
 
