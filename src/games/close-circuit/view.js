@@ -465,9 +465,17 @@ export function mount(container, api) {
 
   // ---- Timer ----
   function tick() {
+    timerEl.classList.toggle('is-unlimited', Boolean(state) && state.phase !== 'over' && state.deadline === null);
     if (!state || state.phase === 'over') {
       timerFill.style.width = '0%';
       timerText.textContent = '–';
+      timerEl.classList.remove('is-low');
+      return;
+    }
+    if (state.deadline === null) {
+      // No time limit: show it, and never report a timeout
+      timerFill.style.width = '100%';
+      timerText.textContent = '∞ No time limit';
       timerEl.classList.remove('is-low');
       return;
     }

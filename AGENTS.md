@@ -112,7 +112,7 @@ Each game is a folder in `src/games/<id>/`:
 
 **Time:** rules must never call `Date.now()`. The authority (today `LocalTransport`, later the server) stamps every action with `meta.now` and gives `setup` a `now`. Rules store deadlines in state and compare against `meta.now`. This keeps rules deterministic and lets a server enforce time limits.
 
-**Pre-game options:** if a manifest declares `options: [{ id, label, description, type: 'number', default, min, max, step, unit }]`, the platform shows a generic setup screen (`platform/pages/gameSetup.js`) before the game starts and passes the chosen values to `rules.setup({ options })`. Games without `options` start immediately.
+**Pre-game options:** if a manifest declares `options: [{ id, label, description, type: 'number', default, min, max, step, unit }]`, the platform shows a generic setup screen (`platform/pages/gameSetup.js`) before the game starts and passes the chosen values to `rules.setup({ options })`. Games without `options` start immediately. An option with `unlimited: true` also gets a "No limit" checkbox; ticking it passes `null`, so rules must treat `null` as "no limit" (a missing value still means "use the default").
 
 `mount(container, api)` returns `{ update(state), destroy() }`. `api` = `{ players, getState, dispatch(action, playerId?), mode, localPlayerId, exit }`. In pass-and-play, omitting `playerId` in `dispatch` acts as the current turn's player.
 
@@ -231,7 +231,7 @@ Spec source: `close_circuit.txt` (repo root, English). Rules code: `src/games/cl
 - Each turn a player places **1 to 3** cards on a **100x100** grid, then ends the turn. The first card of a game goes in the **center cell** (50,50); every other card must **share an edge** with a card already on the board (including cards placed earlier in the same turn).
 - **Win:** after a placement, every line end on the board connects to a matching end of a neighbouring card (no loose ends). Whoever just placed wins. A single line is not closed; a square or rectangle is.
 - **Challenge ("no solution")**: on your turn, instead of placing, you may challenge (needs at least 1 card on the board). The opponent then gets 1-3 cards and `turnSeconds + challengeSeconds` to close the circuit. Closed -> the challenged player wins. Failed, conceded or timed out -> the challenger wins.
-- **Timers:** `turnSeconds` (default 30) per turn; `challengeSeconds` (default 30) extra for a challenged player. Both are chosen on the pre-game setup screen. Running out of time **loses the game**.
+- **Timers:** `turnSeconds` (default 30) per turn; `challengeSeconds` (default 30) extra for a challenged player. Both are chosen on the pre-game setup screen, and **each can be switched to "No limit"** (stored as `null`). Running out of time **loses the game**. With no limit, `state.deadline` is `null`, the view shows "∞ No time limit", and `TIMEOUT` is rejected. A challenge has no deadline if either value is `null`.
 - **Series:** player 1 starts game 1, player 2 starts game 2, and so on. Wins are tracked across games (`state.wins`), with `NEXT_GAME` starting the next one.
 
 ### Assumptions Mason did not specify (flagged, easy to change)

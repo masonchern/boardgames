@@ -43,6 +43,8 @@
  * @property {number} [max]
  * @property {number} [step]
  * @property {string} [unit]
+ * @property {boolean} [unlimited]  Offer a "No limit" checkbox. When ticked the value is `null`,
+ *                                  so rules must treat `null` as "no limit".
  */
 
 /**

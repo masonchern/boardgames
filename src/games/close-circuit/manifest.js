@@ -23,6 +23,7 @@ export default {
       max: 600,
       step: 5,
       unit: 'seconds',
+      unlimited: true,
     },
     {
       id: 'challengeSeconds',
@@ -34,6 +35,7 @@ export default {
       max: 600,
       step: 5,
       unit: 'seconds',
+      unlimited: true,
     },
   ],
 };

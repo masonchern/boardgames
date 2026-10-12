@@ -10,7 +10,8 @@
  * - CHALLENGE ("no solution"): instead of placing, the player whose turn it is may challenge.
  *   The opponent then gets 1-3 cards and (turn time + extra challenge time) to close the circuit.
  *   Closed -> the challenged player wins. Otherwise (fails, concedes, times out) -> challenger wins.
- * - Every turn has a time limit. Running out of time loses the game.
+ * - Every turn has a time limit (default 30s). Running out of time loses the game.
+ *   Either limit can also be switched off: `null` means "no limit" (see normalizeOptions).
  * - The starter alternates every game, and wins are tracked across games.
  *
  * ASSUMPTIONS (the spec was silent; easy to change here):
@@ -25,8 +26,8 @@
 import { CARD_KINDS, DX, DY, cellKey, isWinningBoard } from './circuit.js';
 
 export const DEFAULT_OPTIONS = {
-  turnSeconds: 30, // time per turn (x)
-  challengeSeconds: 30, // extra time for a challenged player (y)
+  turnSeconds: 30, // time per turn (x); null = no limit
+  challengeSeconds: 30, // extra time for a challenged player (y); null = no limit
   gridSize: 100,
   deckSize: 48,
   maxPerTurn: 3,
@@ -37,11 +38,18 @@ const clampInt = (value, fallback, min, max) => {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback;
 };
 
+/** Seconds setting: an explicit `null` means "no limit"; a missing/invalid value falls back to the default. */
+const seconds = (value, fallback, min, max) => (value === null ? null : clampInt(value, fallback, min, max));
+
+/** Deadline in ms for a turn starting at `now`, or null when there is no limit. */
+const deadlineAfter = (now, ...limits) =>
+  limits.some((s) => s === null) ? null : now + limits.reduce((sum, s) => sum + s, 0) * 1000;
+
 export function normalizeOptions(o = {}) {
   const d = DEFAULT_OPTIONS;
   return {
-    turnSeconds: clampInt(o.turnSeconds, d.turnSeconds, 5, 600),
-    challengeSeconds: clampInt(o.challengeSeconds, d.challengeSeconds, 0, 600),
+    turnSeconds: seconds(o.turnSeconds, d.turnSeconds, 5, 600),
+    challengeSeconds: seconds(o.challengeSeconds, d.challengeSeconds, 0, 600),
     gridSize: clampInt(o.gridSize, d.gridSize, 5, 200),
     deckSize: clampInt(o.deckSize, d.deckSize, 1, 200),
     maxPerTurn: clampInt(o.maxPerTurn, d.maxPerTurn, 1, 10),
@@ -63,7 +71,7 @@ function freshGame(series, starterIndex, now) {
     current: starterIndex, // index of the player who must act (the responder during a challenge)
     challengerId: null,
     turnStartedAt: now,
-    deadline: now + options.turnSeconds * 1000,
+    deadline: deadlineAfter(now, options.turnSeconds), // null = no time limit
     result: null, // { winnerId: string|null, reason: string } once over
     lastPlaced: [], // keys of the cards placed in the most recent move
   };
@@ -137,6 +145,7 @@ export const rules = {
 
     if (action.type === 'TIMEOUT') {
       // Anyone (or the server's own clock) may report a timeout, but only once it has really expired.
+      if (state.deadline === null) return fail('There is no time limit');
       return meta && meta.now >= state.deadline ? ok : fail('The timer has not expired yet');
     }
 
@@ -193,7 +202,7 @@ export const rules = {
           current: other,
           turnNumber: state.turnNumber + 1,
           turnStartedAt: now,
-          deadline: now + state.options.turnSeconds * 1000,
+          deadline: deadlineAfter(now, state.options.turnSeconds),
         };
       }
 
@@ -206,7 +215,8 @@ export const rules = {
           current: other, // the challenged player must now close the circuit
           turnNumber: state.turnNumber + 1,
           turnStartedAt: now,
-          deadline: now + (turnSeconds + challengeSeconds) * 1000,
+          // turn time + extra time; no limit if either one is switched off
+          deadline: deadlineAfter(now, turnSeconds, challengeSeconds),
         };
       }
 

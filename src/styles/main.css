@@ -254,7 +254,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .field__text { display: grid; gap: 4px; }
 .field__label { font-weight: 600; }
 .field__input { display: flex; align-items: center; gap: 8px; }
-.field input {
+.field input[type='number'] {
   width: 84px;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -264,7 +264,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   font: inherit;
   text-align: right;
 }
-.field input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.field input[type='number']:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.field input[type='number']:disabled { opacity: 0.4; }
+.field__nolimit { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font-size: 0.9rem; white-space: nowrap; cursor: pointer; }
+.field__input { flex-wrap: wrap; justify-content: flex-end; }
 
 /* ===== Responsive ===== */
 @media (max-width: 760px) {

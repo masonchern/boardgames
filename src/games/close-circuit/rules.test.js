@@ -148,6 +148,39 @@ test('timers: variable settings, and timeouts only count after the deadline', ()
   assert.equal(challenged.deadline, T0 + 6_000 + 15_000);
 });
 
+test('no time limit: null turn time means no deadline and no timeouts', () => {
+  const s = newGame({ turnSeconds: null });
+  assert.equal(s.options.turnSeconds, null);
+  assert.equal(s.deadline, null);
+  assert.equal(reject(s, 'p1', { type: 'TIMEOUT' }, T0 + 10 ** 9).ok, false);
+
+  // the game still works, and later turns stay unlimited, including after a challenge
+  let moved = act(s, 'p1', { type: 'PLAY', placements: [{ x: 50, y: 50, kind: 'straight', rot: 0 }] });
+  assert.equal(moved.deadline, null);
+  moved = act(moved, 'p2', { type: 'CHALLENGE' });
+  assert.equal(moved.phase, 'challenge');
+  assert.equal(moved.deadline, null);
+});
+
+test('no limit on the extra challenge time only affects challenged players', () => {
+  const s = newGame({ turnSeconds: 10, challengeSeconds: null });
+  assert.equal(s.options.challengeSeconds, null);
+  assert.equal(s.deadline, T0 + 10_000); // normal turns are still timed
+
+  let moved = act(s, 'p1', { type: 'PLAY', placements: [{ x: 50, y: 50, kind: 'straight', rot: 0 }] }, T0 + 1_000);
+  assert.equal(moved.deadline, T0 + 11_000);
+  moved = act(moved, 'p2', { type: 'CHALLENGE' }, T0 + 2_000);
+  assert.equal(moved.deadline, null); // the challenged player has all the time they need
+});
+
+test('missing or invalid time settings fall back to the 30 second defaults', () => {
+  for (const options of [undefined, {}, { turnSeconds: 'abc', challengeSeconds: undefined }]) {
+    const s = newGame(options);
+    assert.equal(s.options.turnSeconds, 30);
+    assert.equal(s.options.challengeSeconds, 30);
+  }
+});
+
 test('next game: starter alternates and wins carry over', () => {
   let s = act(newGame(), 'p1', { type: 'PLAY', placements: SQUARE.slice(0, 3) });
   s = act(s, 'p2', { type: 'PLAY', placements: [SQUARE[3]] });
