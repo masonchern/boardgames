@@ -269,9 +269,33 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .field__nolimit { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font-size: 0.9rem; white-space: nowrap; cursor: pointer; }
 .field__input { flex-wrap: wrap; justify-content: flex-end; }
 
+/* ===== Touch devices ===== */
+button, summary, label { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+@media (pointer: coarse) {
+  /* Comfortable tap targets, and no sticky hover lift after a tap */
+  .btn, .nav__item { min-height: 44px; }
+  .btn:hover:not(:disabled), .game-card:hover { transform: none; }
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 760px) {
-  .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  body { min-height: 100dvh; }
+  .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; min-height: 100dvh; }
+  .shell.is-in-game .sidebar { display: none; }
+  .content {
+    padding: 16px max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .page__header { margin-bottom: 18px; }
+  .page__header h1 { font-size: 1.6rem; }
+  .card-grid { grid-template-columns: 1fr; gap: 14px; }
+  .game-bar { gap: 10px; margin-bottom: 12px; }
+  .game-stage, .page--wide .game-stage { min-height: 0; padding: 10px; border-radius: 16px; }
+  .setup { padding: 8px 0; }
+  .field { flex-wrap: wrap; }
+  .field__input { justify-content: flex-start; }
+  .panel { padding: 8px 16px; }
+  .setting-row { flex-wrap: wrap; }
+
   .sidebar {
     position: static;
     height: auto;
@@ -283,8 +307,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
     border-right: 0;
     border-bottom: 1px solid var(--border);
   }
-  .brand span:last-child, .sidebar__footer { display: none; }
-  .nav { flex-direction: row; }
+  .brand, .sidebar__footer { display: none; }
+  .nav { flex: 1; flex-direction: row; gap: 6px; }
+  .nav__item { flex: 1; justify-content: center; gap: 8px; padding: 10px 8px; font-size: 0.95rem; }
+  .nav__item.is-active { box-shadow: inset 0 -2px 0 var(--primary); }
   .content { padding: 24px 16px; }
 }
 

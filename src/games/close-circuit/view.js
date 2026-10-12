@@ -133,7 +133,7 @@ export function mount(container, api) {
       el('li', {}, 'Close the circuit to win: every line end on the board must connect to another, with nothing sticking out. A square or rectangle works, a single line does not.'),
       el('li', {}, 'Instead of placing cards you can challenge with "No solution!". The other player then gets extra time and 1 to 3 cards to close the circuit. If they manage it they win, otherwise you do.'),
       el('li', {}, 'Run out of time and you lose the game. Player 1 starts the first game, player 2 the next, and so on.'),
-      el('li', {}, 'Controls: click a cell to place · R or right-click rotates · T switches straight/turn · Z undoes · drag to pan · scroll to zoom. Red dots mark open line ends.'),
+      el('li', {}, 'Controls: click or tap a cell to place · Rotate button (R or right-click) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel or pinch to zoom. Red dots mark open line ends.'),
     ),
   );
 
@@ -462,7 +462,7 @@ export function mount(container, api) {
     } else if (state.phase === 'challenge') {
       hint.textContent = 'Place cards so that every line end is connected, then submit.';
     } else {
-      hint.textContent = 'Click a cell next to existing cards to place a card.';
+      hint.textContent = 'Tap a cell next to existing cards to place a card.';
     }
   }
 
@@ -500,11 +500,43 @@ export function mount(container, api) {
     return [e.clientX - r.left, e.clientY - r.top];
   };
 
+  // Active pointers (fingers or mouse). Two fingers = pinch zoom + two-finger pan.
+  const pointers = new Map();
+  let pinch = null;
+  const pointerPair = () => [...pointers.values()].slice(0, 2);
+  const pairMetrics = ([a, b]) => ({ dist: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] });
+
   canvas.addEventListener('pointerdown', (e) => {
-    canvas.setPointerCapture(e.pointerId);
-    dragging = { startX: e.clientX, startY: e.clientY, camX: cam.cx, camY: cam.cy, moved: false };
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {
+      // Capture is only an optimization (keeps receiving moves outside the canvas)
+    }
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 1) {
+      dragging = { startX: e.clientX, startY: e.clientY, camX: cam.cx, camY: cam.cy, moved: false };
+    } else if (pointers.size === 2) {
+      if (dragging) dragging.moved = true; // a second finger turns the touch into a gesture, not a tap
+      pinch = pairMetrics(pointerPair());
+    }
   });
   canvas.addEventListener('pointermove', (e) => {
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [e.clientX, e.clientY]);
+
+    if (pinch && pointers.size >= 2) {
+      // Keep the world point that was under the old midpoint under the new midpoint, while rescaling.
+      const next = pairMetrics(pointerPair());
+      const r = canvas.getBoundingClientRect();
+      const wx = (pinch.mid[0] - r.left - cssW / 2) / cam.size + cam.cx;
+      const wy = (pinch.mid[1] - r.top - cssH / 2) / cam.size + cam.cy;
+      cam.size = Math.max(MIN_SIZE, Math.min(MAX_SIZE, cam.size * (next.dist / pinch.dist)));
+      cam.cx = wx - (next.mid[0] - r.left - cssW / 2) / cam.size;
+      cam.cy = wy - (next.mid[1] - r.top - cssH / 2) / cam.size;
+      pinch = next;
+      scheduleDraw();
+      return;
+    }
+
     const [px, py] = canvasPoint(e);
     if (dragging) {
       const dx = e.clientX - dragging.startX;
@@ -530,18 +562,24 @@ export function mount(container, api) {
     }
     scheduleDraw();
   });
-  canvas.addEventListener('pointerup', (e) => {
-    if (dragging && !dragging.moved) {
+  function releasePointer(e, allowTap) {
+    pointers.delete(e.pointerId);
+    pinch = null;
+    if (allowTap && dragging && !dragging.moved && pointers.size === 0) {
       const [x, y] = toCell(...canvasPoint(e));
       placeAt(x, y);
     }
-    dragging = null;
-    canvas.classList.remove('is-panning');
-  });
-  canvas.addEventListener('pointercancel', () => {
-    dragging = null;
-    canvas.classList.remove('is-panning');
-  });
+    if (pointers.size === 1) {
+      // One finger left after a pinch: continue as a pan from where it is now, never as a tap
+      const [[x, y]] = pointers.values();
+      dragging = { startX: x, startY: y, camX: cam.cx, camY: cam.cy, moved: true };
+    } else {
+      dragging = null;
+      canvas.classList.remove('is-panning');
+    }
+  }
+  canvas.addEventListener('pointerup', (e) => releasePointer(e, true));
+  canvas.addEventListener('pointercancel', (e) => releasePointer(e, false));
   canvas.addEventListener('pointerleave', () => {
     hover = null;
     scheduleDraw();
@@ -562,7 +600,8 @@ export function mount(container, api) {
   );
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    rotate();
+    // A long-press on a touch screen also fires this; only a real right-click should rotate.
+    if (e.pointerType !== 'touch') rotate();
   });
 
   const onKey = (e) => {

@@ -37,7 +37,8 @@ export function createApp(root) {
     el('div', { class: 'sidebar__footer muted' }, 'Guest mode · v0.1'),
   );
 
-  root.append(el('div', { class: 'shell' }, sidebar, content));
+  const shell = el('div', { class: 'shell' }, sidebar, content);
+  root.append(shell);
 
   let teardown = null;
 
@@ -46,6 +47,8 @@ export function createApp(root) {
     teardown = null;
 
     navButtons.forEach((btn, id) => btn.classList.toggle('is-active', id === tab));
+    // On phones the nav bar is hidden while a game is open, to give the board the screen.
+    shell.classList.toggle('is-in-game', tab === 'games' && Boolean(gameId));
 
     let node;
     if (tab === 'games' && gameId) {

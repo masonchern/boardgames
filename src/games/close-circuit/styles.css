@@ -58,7 +58,7 @@
   overflow: hidden;
   background: #0a0c12;
 }
-.cc__canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.cc__canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
 .cc__canvas.is-panning { cursor: grabbing; }
 .cc__recenter { position: absolute; top: 10px; right: 10px; padding: 6px 12px; font-size: 0.85rem; }
 
@@ -94,8 +94,24 @@
 .cc__how summary { cursor: pointer; font-weight: 600; color: var(--text); }
 .cc__how ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.5; }
 
+/* Phones: compact header, board sized to the screen, big full-width controls. */
 @media (max-width: 760px) {
-  .cc__hud { grid-template-columns: 1fr 1fr; }
-  .cc__center { grid-column: 1 / -1; order: -1; }
+  .cc { gap: 8px; }
+  .cc__hud { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cc__center { grid-column: 1 / -1; order: -1; gap: 4px; }
+  .cc__player { gap: 8px; padding: 8px 12px; border-radius: 12px; }
+  .cc__wins { font-size: 1.5rem; }
+  .cc__player .muted { display: none; }
+  .cc__banner { padding: 7px 10px; font-size: 0.95rem; }
+  .cc__board { height: clamp(240px, calc(100dvh - 440px), 640px); border-radius: 12px; }
+  .cc__hint { min-height: 1.2em; font-size: 0.85rem; }
+
+  .cc__controls { display: grid; gap: 8px; }
+  .cc__group { flex-wrap: wrap; gap: 8px; }
+  .cc__group > .btn { flex: 1; padding: 8px 10px; font-size: 0.9rem; }
+  .cc__kinds { flex: 2; }
+  .cc__kind { flex: 1; justify-content: center; min-height: 44px; }
+  .cc__count { flex-basis: 100%; min-width: 0; text-align: center; }
+  .cc__toggle { justify-content: center; min-height: 32px; }
 }
 
