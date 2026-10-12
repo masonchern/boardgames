@@ -287,3 +287,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .nav { flex-direction: row; }
   .content { padding: 24px 16px; }
 }
+
+/* Two-step confirm state for destructive buttons */
+.btn.is-armed { background: rgba(255, 93, 93, 0.2); border-color: #ff5d5d; }

@@ -1,3 +1,4 @@
+import './styles.css';
 import { el } from '../../core/dom.js';
 import { rules, placementProblem, centerCell } from './rules.js';
 import { CARD_KINDS, E, S, cellKey, openEnds, isWinningBoard, pieceEnds } from './circuit.js';

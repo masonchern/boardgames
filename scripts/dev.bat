@@ -1,7 +1,7 @@
 @echo off
-rem Local/offline convenience only. Real users will visit the hosted URL instead.
-rem Builds a single self-contained HTML file and opens it in your browser.
-cd /d "%~dp0"
+rem Local convenience: double-click to start the dev server (live reload while editing).
+rem Close this window to stop the server.
+cd /d "%~dp0.."
 
 where npm >nul 2>nul
 if errorlevel 1 (
@@ -15,7 +15,5 @@ if not exist node_modules (
   call npm install || (pause & exit /b 1)
 )
 
-echo Building...
-call npm run build:single || (pause & exit /b 1)
-
-start "" "%~dp0dist-single\index.html"
+call npm run dev
+pause

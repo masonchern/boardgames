@@ -1,5 +1,5 @@
 import { GameSession } from './session.js';
-import { getManifest, loadGameModule } from '../games/registry.js';
+import { getManifest, loadGameModule } from './registry.js';
 
 /** Default players for local pass-and-play. */
 function defaultLocalPlayers(count) {

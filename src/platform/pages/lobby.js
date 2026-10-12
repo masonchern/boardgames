@@ -1,6 +1,6 @@
 import { el } from '../../core/dom.js';
 import { navigate } from '../../core/router.js';
-import { manifests } from '../../games/registry.js';
+import { manifests } from '../../core/registry.js';
 
 const STATUS_LABEL = {
   playable: 'Play now',

@@ -10,7 +10,7 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 
 - **Live site:** https://masonchern.github.io/boardgames/
 - **Repo:** https://github.com/masonchern/boardgames (public, owner `masonchern`, default branch `main`)
-- **Original product spec:** `AI_INSTRUCTION` (repo root, written in Chinese). It is the source of truth for product intent.
+- **Original product spec:** `docs/platform-spec.txt` (written in Chinese). It is the source of truth for product intent.
 
 ### Goals (from the spec)
 1. **Plug-and-play games.** Adding a game must not require changing platform code.
@@ -47,9 +47,9 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 ## 3. Tech stack
 
 - **Vanilla JavaScript (ES modules)**, **no framework**, **no TypeScript**. Types are documented with JSDoc `@typedef` in `src/core/types.js`.
-- **Vite 8** for dev server and build. Dev dependencies only: `vite`, `vite-plugin-singlefile`.
+- **Vite 8** for dev server and build. The only dev dependency is `vite`.
 - **Hash routing** (`#/games/tic-tac-toe`), so it works on any static host, including GitHub Pages sub-paths.
-- Plain CSS with custom properties, in `src/styles/`.
+- Plain CSS with custom properties. Platform styles live in `src/platform/styles/main.css`; each game has its own `styles.css` imported by its `view.js`.
 - Node.js 24 LTS, npm 11.
 
 ---
@@ -57,33 +57,35 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 ## 4. Project structure
 
 ```
-index.html                  Vite entry (loads src/main.js, both stylesheets)
-package.json                Scripts: dev, build, build:single, preview
-vite.config.js              base './', single-file plugin only in "single" mode
-.github/workflows/deploy.yml   CI: build + deploy to GitHub Pages on push to main
-AI_INSTRUCTION              Original product spec (Chinese)
+index.html                  Vite entry (loads src/main.js)
+package.json                Scripts: dev, build, preview, test
+vite.config.js              base './' (relative paths, works under /boardgames/)
 AGENTS.md                   This file
-Play.bat / Dev.bat          Optional local Windows shortcuts (not for end users)
+.github/workflows/deploy.yml   CI: test + build + deploy to GitHub Pages on push to main
+docs/
+  platform-spec.txt         Original product spec (Chinese)
+scripts/
+  dev.bat                   Optional Windows shortcut for `npm run dev` (not for end users)
 src/
-  main.js                   Boots the app
+  main.js                   Boots the app (imports platform CSS)
   core/                     Platform-agnostic engine pieces
     types.js                The plugin CONTRACT (JSDoc typedefs). Read this to add a game.
                             (includes pre-game `options` and the `meta.now` time stamp)
     session.js              GameSession: client-side match, one-way data flow
     transport.js            LocalTransport (in-memory fake server); WebSocket sketch in comments
     gameLoader.js           mountGame(): resolves id -> loads module -> builds session -> mounts view
+    registry.js             Auto-discovers games in src/games/ via import.meta.glob
     router.js               Minimal hash router
     dom.js                  el() hyperscript helper
   platform/
     app.js                  Shell: sidebar tabs, route -> page rendering, page teardown
     pages/                  lobby.js, gamePage.js, gameSetup.js (generic pre-game options screen),
                             account.js, settings.js
-  games/
-    registry.js             Auto-discovers games via import.meta.glob
-    close-circuit/          Mason's game: manifest.js, circuit.js, rules.js, rules.test.js, view.js, index.js
-    tic-tac-toe/            Minimal reference game: manifest.js, rules.js, view.js, index.js
+    styles/main.css         Platform shell styles
+  games/                    One self-contained folder per game (nothing else lives here)
+    close-circuit/          Mason's game: SPEC.txt, manifest.js, circuit.js, rules.js, rules.test.js, view.js, styles.css, index.js
+    tic-tac-toe/            Minimal reference game: manifest.js, rules.js, view.js, styles.css, index.js
     secret-game-a/, secret-game-b/   Placeholders (manifest.js + index.js exporting null)
-  styles/                   main.css (platform), games.css (per-game styles)
 ```
 
 ---
@@ -119,7 +121,7 @@ Each game is a folder in `src/games/<id>/`:
 ### How to add a new game
 1. Create `src/games/<id>/manifest.js` and `src/games/<id>/index.js` (copy `tic-tac-toe` as a template).
 2. Set `status: 'playable'` in the manifest once it works. Use `order` to control lobby position (lower first; default 100).
-3. Add styles to `src/styles/games.css` (or import a CSS file from the game's view).
+3. Put the game's styles in `src/games/<id>/styles.css` and import it from the game's `view.js` (prefix class names with the game, e.g. `.ttt__`, `.cc__`). Put the game's spec or notes next to it in the same folder.
 4. **No registry or platform edits needed.** `import.meta.glob` finds the folder automatically.
 5. Placeholders (non-playable) still need an `index.js` that exports `null`. The loader globs it, but the platform never mounts non-playable games.
 
@@ -142,9 +144,8 @@ Run from the project root (`c:\Users\mason\OneDrive\Desktop\Boardgames` on Mason
 | `npm run build` | Production build to `dist/` (this is what CI deploys) |
 | `npm test` | Run unit tests (Node's built-in runner, any `*.test.js`). Pure rules only, no DOM. CI runs this before deploying. |
 | `npm run preview` | Serve the built `dist/` locally (default port 4173) |
-| `npm run build:single` | One self-contained HTML file in `dist-single/` (offline use; `Play.bat` uses it) |
 
-**Never tell end users to open `index.html` directly.** Source `index.html` uses ES modules, which browsers block on `file://`. Only the `build:single` output works from a double-click.
+**Never tell end users to open `index.html` directly.** Source `index.html` uses ES modules, which browsers block on `file://`. Users play at the hosted URL; developers use `npm run dev`.
 
 ---
 
@@ -162,7 +163,7 @@ Run from the project root (`c:\Users\mason\OneDrive\Desktop\Boardgames` on Mason
 ### State
 - Repo initialized locally in the project folder, branch **`main`**, remote **`origin`** = `https://github.com/masonchern/boardgames.git` (HTTPS).
 - Single developer, no branching convention yet. Work directly on `main`. Every push to `main` **deploys to production**, so make sure `npm run build` passes first.
-- `.gitignore` excludes `node_modules`, `dist`, `dist-single`.
+- `.gitignore` excludes `node_modules`, `dist`.
 
 ### Identity
 Repo-local git config (not global) uses the GitHub no-reply address, so the user's real email stays private:
@@ -209,7 +210,7 @@ $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';'
 - The project lives in **OneDrive** (`Desktop\Boardgames`). OneDrive syncs `node_modules` (thousands of small files). Suggest pausing sync for that folder or moving the project if it causes trouble.
 - The Cursor in-editor browser **cannot open `file://` URLs**. Test against `http://localhost:5173` (dev) or `http://localhost:4173` (preview), or the live URL. If the first `browser_navigate` leaves you on `about:blank`, create a new tab (`browser_tabs` with `action: new`) and navigate again.
 - A leftover dev server may hold port 5173 (Vite then silently falls back to 5174). Check for running processes before assuming a port.
-- `npm audit` reports 3 high-severity findings via `vite-plugin-singlefile` (a build-time glob-pattern issue in `braces`). They do not affect shipped code (`npm audit --omit=dev` reports 0). They are ignorable.
+- `npm audit` currently reports 0 vulnerabilities.
 
 ---
 
@@ -224,7 +225,7 @@ $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';'
 
 ## 11. Close Circuit (Mason's invented game)
 
-Spec source: `close_circuit.txt` (repo root, English). Rules code: `src/games/close-circuit/rules.js` (heavily commented, with an ASSUMPTIONS list). Geometry and circuit detection: `circuit.js`. Canvas UI: `view.js`.
+Spec source: `src/games/close-circuit/SPEC.txt` (English). Rules code: `src/games/close-circuit/rules.js` (heavily commented, with an ASSUMPTIONS list). Geometry and circuit detection: `circuit.js`. Canvas UI: `view.js`.
 
 ### Rules as implemented (basic mode)
 - 2 players share ONE deck of 48 cards. Every card is placed as a **straight** line or a **90-degree turn**, in any rotation.

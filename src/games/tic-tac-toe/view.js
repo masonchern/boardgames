@@ -1,3 +1,4 @@
+import './styles.css';
 import { el } from '../../core/dom.js';
 import { rules } from './rules.js';
 

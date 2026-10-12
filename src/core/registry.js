@@ -8,12 +8,12 @@
  */
 
 /** Eagerly load every manifest (small, needed to render lobby cards). */
-const manifestModules = import.meta.glob('./*/manifest.js', { eager: true, import: 'default' });
+const manifestModules = import.meta.glob('../games/*/manifest.js', { eager: true, import: 'default' });
 
 /** Lazy loaders for the heavy game modules. Each becomes its own code-split chunk. */
-const gameLoaders = import.meta.glob('./*/index.js', { import: 'default' });
+const gameLoaders = import.meta.glob('../games/*/index.js', { import: 'default' });
 
-/** @type {import('../core/types.js').GameManifest[]} */
+/** @type {import('./types.js').GameManifest[]} */
 export const manifests = Object.values(manifestModules).sort(
   // Lower `order` first; games without one go last (then alphabetical by title).
   (a, b) => (a.order ?? 100) - (b.order ?? 100) || a.title.localeCompare(b.title),
@@ -26,10 +26,10 @@ export function getManifest(id) {
 /**
  * Lazily load the game implementation (rules + view).
  * @param {string} id
- * @returns {Promise<import('../core/types.js').GameModule>}
+ * @returns {Promise<import('./types.js').GameModule>}
  */
 export async function loadGameModule(id) {
-  const loader = gameLoaders[`./${id}/index.js`];
+  const loader = gameLoaders[`../games/${id}/index.js`];
   if (!loader) throw new Error(`Unknown game: ${id}`);
   return loader();
 }

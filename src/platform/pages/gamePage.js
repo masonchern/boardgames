@@ -1,6 +1,6 @@
 import { el } from '../../core/dom.js';
 import { navigate } from '../../core/router.js';
-import { getManifest } from '../../games/registry.js';
+import { getManifest } from '../../core/registry.js';
 import { mountGame } from '../../core/gameLoader.js';
 import { renderGameSetup } from './gameSetup.js';
 
