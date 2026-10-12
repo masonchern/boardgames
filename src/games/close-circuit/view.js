@@ -2,10 +2,34 @@ import { el } from '../../core/dom.js';
 import { rules, placementProblem, centerCell } from './rules.js';
 import { CARD_KINDS, E, S, cellKey, openEnds, isWinningBoard, pieceEnds } from './circuit.js';
 
-const ICON_STRAIGHT =
-  '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="4"><path d="M1 12H23"/></svg>';
-const ICON_TURN =
-  '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="4"><path d="M12 1A11 11 0 0 0 23 12"/></svg>';
+/**
+ * SVG preview of a card in a given rotation, drawn from the same line ends the board uses,
+ * so the button always shows exactly what will be placed. 24x24 cell, ends at the edge midpoints.
+ */
+function cardIcon(kind, rot) {
+  const mid = [[12, 0], [24, 12], [12, 24], [0, 12]]; // N, E, S, W
+  const [a, b] = pieceEnds(kind, rot);
+  const [ax, ay] = mid[a];
+  const [bx, by] = mid[b];
+  let path;
+  if (kind === 'straight') {
+    path = `M${ax} ${ay}L${bx} ${by}`;
+  } else {
+    // Quarter circle around the cell corner shared by both ends
+    const cornerX = a === E || b === E ? 24 : 0;
+    const cornerY = a === S || b === S ? 24 : 0;
+    let d = Math.atan2(by - cornerY, bx - cornerX) - Math.atan2(ay - cornerY, ax - cornerX);
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    path = `M${ax} ${ay}A12 12 0 0 ${d < 0 ? 0 : 1} ${bx} ${by}`;
+  }
+  return (
+    '<svg viewBox="0 0 24 24" width="30" height="30" fill="none">' +
+    '<rect x="0.75" y="0.75" width="22.5" height="22.5" rx="3" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.5"/>' +
+    `<path d="${path}" stroke="currentColor" stroke-width="4.5"/>` +
+    '</svg>'
+  );
+}
 
 const MIN_SIZE = 14; // zoom limits, in pixels per cell
 const MAX_SIZE = 96;
@@ -63,8 +87,11 @@ export function mount(container, api) {
   const recenterBtn = el('button', { class: 'btn btn--ghost cc__recenter', onclick: () => { recenter(); scheduleDraw(); } }, 'Recenter');
   const boardWrap = el('div', { class: 'cc__board' }, canvas, recenterBtn);
 
-  const straightBtn = el('button', { class: 'cc__kind', title: 'Straight line (T)', onclick: () => setKind('straight'), html: `${ICON_STRAIGHT}<span>Straight</span>` });
-  const turnBtn = el('button', { class: 'cc__kind', title: 'Turning line (T)', onclick: () => setKind('turn'), html: `${ICON_TURN}<span>Turn</span>` });
+  // The icons are redrawn in refresh() so they follow the current rotation.
+  const straightIcon = el('span', { class: 'cc__icon' });
+  const turnIcon = el('span', { class: 'cc__icon' });
+  const straightBtn = el('button', { class: 'cc__kind', title: 'Straight line (T)', onclick: () => setKind('straight') }, straightIcon, el('span', {}, 'Straight'));
+  const turnBtn = el('button', { class: 'cc__kind', title: 'Turning line (T)', onclick: () => setKind('turn') }, turnIcon, el('span', {}, 'Turn'));
   const rotateBtn = el('button', { class: 'btn btn--ghost', title: 'Rotate (R or right-click)', onclick: rotate }, '⟳ Rotate');
   const countEl = el('div', { class: 'cc__count muted' });
   const undoBtn = el('button', { class: 'btn btn--ghost', title: 'Undo last card (Z)', onclick: undo }, 'Undo');
@@ -394,6 +421,9 @@ export function mount(container, api) {
 
     straightBtn.classList.toggle('is-selected', kind === 'straight');
     turnBtn.classList.toggle('is-selected', kind === 'turn');
+    // Each button previews the orientation that kind would have (same rule as setKind: rot % rotations)
+    straightIcon.innerHTML = cardIcon('straight', rot % CARD_KINDS.straight.rotations);
+    turnIcon.innerHTML = cardIcon('turn', rot % CARD_KINDS.turn.rotations);
 
     const max = maxDraft();
     countEl.textContent = active ? `Cards this turn: ${draft.length} / ${max}` : '';
