@@ -17,7 +17,7 @@ function defaultLocalPlayers(count) {
  *
  * @param {string} gameId
  * @param {HTMLElement} container
- * @param {{ exit: () => void }} hooks
+ * @param {{ exit: () => void, options?: Object }} hooks  `options` = pre-game settings
  * @returns {Promise<{ destroy: () => void }>}
  */
 export async function mountGame(gameId, container, hooks) {
@@ -28,7 +28,12 @@ export async function mountGame(gameId, container, hooks) {
   const game = await loadGameModule(gameId);
   const players = defaultLocalPlayers(manifest.players.min);
 
-  const session = new GameSession({ rules: game.rules, players, mode: 'local' });
+  const session = new GameSession({
+    rules: game.rules,
+    players,
+    mode: 'local',
+    options: hooks.options ?? {},
+  });
 
   let view = null;
   const api = {

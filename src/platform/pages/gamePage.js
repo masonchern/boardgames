@@ -2,18 +2,21 @@ import { el } from '../../core/dom.js';
 import { navigate } from '../../core/router.js';
 import { getManifest } from '../../games/registry.js';
 import { mountGame } from '../../core/gameLoader.js';
+import { renderGameSetup } from './gameSetup.js';
 
 /**
  * Hosts a game. Returns { node, destroy } so the shell can clean up on navigation.
+ * If the manifest declares `options`, a setup screen is shown before the game starts.
  */
 export function renderGamePage(gameId) {
   const manifest = getManifest(gameId);
   const exit = () => navigate('games');
 
   const stage = el('div', { class: 'game-stage' });
+  const wide = manifest?.layout === 'wide';
   const node = el(
     'section',
-    { class: 'page page--game' },
+    { class: `page page--game ${wide ? 'page--wide' : ''}` },
     el(
       'header',
       { class: 'game-bar' },
@@ -42,22 +45,27 @@ export function renderGamePage(gameId) {
   let handle = null;
   let destroyed = false;
 
-  // The game gets its own root so the loading placeholder never clobbers the view
-  // (the view mounts as soon as the first state arrives, possibly before our .then runs).
-  const loading = placeholder('⏳', 'Loading…', '');
-  const gameRoot = el('div', { class: 'game-root' });
-  stage.append(loading, gameRoot);
+  function launch(options) {
+    // The game gets its own root so the loading placeholder never clobbers the view
+    // (the view mounts as soon as the first state arrives, possibly before our .then runs).
+    const loading = placeholder('⏳', 'Loading…', '');
+    const gameRoot = el('div', { class: 'game-root' });
+    stage.replaceChildren(loading, gameRoot);
 
-  mountGame(gameId, gameRoot, { exit })
-    .then((h) => {
-      loading.remove();
-      if (destroyed) h.destroy();
-      else handle = h;
-    })
-    .catch((err) => {
-      console.error(err);
-      stage.replaceChildren(placeholder('⚠️', 'Failed to load game', String(err.message)));
-    });
+    mountGame(gameId, gameRoot, { exit, options })
+      .then((h) => {
+        loading.remove();
+        if (destroyed) h.destroy();
+        else handle = h;
+      })
+      .catch((err) => {
+        console.error(err);
+        stage.replaceChildren(placeholder('⚠️', 'Failed to load game', String(err.message)));
+      });
+  }
+
+  if (manifest.options?.length) stage.append(renderGameSetup(manifest, launch));
+  else launch({});
 
   return {
     node,

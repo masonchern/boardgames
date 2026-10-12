@@ -6,7 +6,7 @@ export default {
   description: 'The classic 3×3 duel. A minimal example of turns, actions and state.',
   players: { min: 2, max: 2 },
   status: 'playable',
-  order: 1,
+  order: 2,
   icon: '⭕',
   accent: '#6c8cff',
   tags: ['classic', 'pass-and-play'],

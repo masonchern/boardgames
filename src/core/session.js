@@ -12,14 +12,15 @@ export class GameSession {
    * @param {import('./types.js').Player[]} opts.players
    * @param {'local'|'online'} [opts.mode]
    * @param {string|null} [opts.localPlayerId]
+   * @param {Object} [opts.options]  Pre-game settings (passed to rules.setup)
    * @param {{connect:Function,send:Function,close:Function}} [opts.transport]
    */
-  constructor({ rules, players, mode = 'local', localPlayerId = null, transport }) {
+  constructor({ rules, players, mode = 'local', localPlayerId = null, options = {}, transport }) {
     this.rules = rules;
     this.players = players;
     this.mode = mode;
     this.localPlayerId = localPlayerId;
-    this.transport = transport ?? new LocalTransport(rules, players);
+    this.transport = transport ?? new LocalTransport(rules, players, options);
     /** @type {any} */
     this.state = null;
     this.seq = -1;

@@ -17,11 +17,15 @@
  * games never rely on synchronous updates.
  */
 export class LocalTransport {
-  /** @param {import('./types.js').GameRules} rules @param {import('./types.js').Player[]} players */
-  constructor(rules, players) {
+  /**
+   * @param {import('./types.js').GameRules} rules
+   * @param {import('./types.js').Player[]} players
+   * @param {Object} [options]  Pre-game settings chosen on the setup screen
+   */
+  constructor(rules, players, options = {}) {
     this.rules = rules;
     this.players = players;
-    this.state = rules.setup({ players });
+    this.state = rules.setup({ players, options, now: Date.now() });
     this.seq = 0;
     this.handlers = null;
     this.closed = false;
@@ -35,12 +39,14 @@ export class LocalTransport {
   send({ playerId, action }) {
     queueMicrotask(() => {
       if (this.closed) return;
-      const verdict = this.rules.validate(this.state, action, playerId);
+      // The authority stamps the time. A real server would do the same with its own clock.
+      const meta = { now: Date.now() };
+      const verdict = this.rules.validate(this.state, action, playerId, meta);
       if (!verdict.ok) {
         this.handlers?.onError(new Error(verdict.error || 'Invalid action'));
         return;
       }
-      this.state = this.rules.reduce(this.state, action, playerId);
+      this.state = this.rules.reduce(this.state, action, playerId, meta);
       this.seq += 1;
       this.handlers?.onState(this.state, this.seq);
     });

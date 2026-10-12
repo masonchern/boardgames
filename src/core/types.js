@@ -25,6 +25,24 @@
  * @property {string} [accent]    Theme color (any CSS color)
  * @property {string[]} [tags]
  * @property {number} [order]     Lobby sort order (lower first, default 100)
+ * @property {GameOptionDef[]} [options]  Pre-game settings. When present, the platform shows a
+ *                                setup screen first and passes the chosen values to rules.setup().
+ * @property {'default'|'wide'} [layout]  'wide' gives the game a larger stage (e.g. big boards)
+ */
+
+/**
+ * One pre-game setting, rendered by the platform's generic setup screen.
+ *
+ * @typedef {Object} GameOptionDef
+ * @property {string} id            Key in the options object given to rules.setup()
+ * @property {string} label
+ * @property {string} [description]
+ * @property {'number'} type        (more types can be added later)
+ * @property {number} default
+ * @property {number} [min]
+ * @property {number} [max]
+ * @property {number} [step]
+ * @property {string} [unit]
  */
 
 /**
@@ -39,12 +57,16 @@
  * Game rules: pure functions with no DOM access, so they can later be moved as-is
  * to a Node server and used as the authoritative rules.
  *
+ * Time: rules must never call Date.now(). The authority (transport / future server)
+ * stamps every action with `meta.now` (ms since epoch), and `setup` receives `now`.
+ * That keeps rules deterministic, and lets a server enforce time limits itself.
+ *
  * @typedef {Object} GameRules
- * @property {(ctx:{players:Player[]}) => any} setup
+ * @property {(ctx:{players:Player[], options?:Object, now:number}) => any} setup
  *     Create the initial state.
- * @property {(state:any, action:any, playerId:string) => {ok:boolean, error?:string}} validate
+ * @property {(state:any, action:any, playerId:string, meta?:{now:number}) => {ok:boolean, error?:string}} validate
  *     Check whether a player's action is legal.
- * @property {(state:any, action:any, playerId:string) => any} reduce
+ * @property {(state:any, action:any, playerId:string, meta?:{now:number}) => any} reduce
  *     Apply the action and return a NEW state (never mutate the input).
  * @property {(state:any) => GameStatus} getStatus
  */

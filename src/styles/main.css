@@ -234,6 +234,38 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .empty__icon { font-size: 3rem; }
 .empty p { color: var(--muted); }
 
+.page--wide { max-width: 1400px; }
+.page--wide .game-stage { padding: 20px; }
+
+/* ===== Generic pre-game setup screen ===== */
+.setup { display: grid; justify-items: center; gap: 14px; max-width: 520px; margin: 0 auto; padding: 24px 0; text-align: center; }
+.setup__icon { font-size: 3rem; }
+.setup__fields { display: grid; gap: 12px; width: 100%; margin: 10px 0; text-align: left; }
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.field__text { display: grid; gap: 4px; }
+.field__label { font-weight: 600; }
+.field__input { display: flex; align-items: center; gap: 8px; }
+.field input {
+  width: 84px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: right;
+}
+.field input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+
 /* ===== Responsive ===== */
 @media (max-width: 760px) {
   .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }

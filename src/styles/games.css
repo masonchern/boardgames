@@ -57,3 +57,103 @@
   from { transform: scale(0.4); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* ===== Close Circuit ===== */
+.cc { display: grid; gap: 14px; }
+
+.cc__hud { display: grid; grid-template-columns: 1fr minmax(220px, 320px) 1fr; gap: 14px; align-items: stretch; }
+.cc__player {
+  --pc: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: all 0.3s var(--ease);
+}
+.cc__player:last-child { flex-direction: row-reverse; text-align: right; }
+.cc__player.is-active {
+  border-color: var(--pc);
+  background: color-mix(in srgb, var(--pc) 14%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--pc) 28%, transparent);
+}
+.cc__dot { width: 14px; height: 14px; border-radius: 50%; background: var(--pc); }
+.cc__pname { font-weight: 700; }
+.cc__wins { margin-left: auto; font-size: 1.9rem; font-weight: 800; color: var(--pc); }
+.cc__player:last-child .cc__wins { margin-left: 0; margin-right: auto; }
+
+.cc__center { display: grid; align-content: center; gap: 8px; text-align: center; }
+.cc__info { font-size: 0.82rem; }
+.cc__timer {
+  position: relative;
+  height: 30px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+}
+.cc__timer-fill { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(90deg, #4fd1a5, #6c8cff); transition: width 0.12s linear; }
+.cc__timer.is-low .cc__timer-fill { background: linear-gradient(90deg, #ff5d5d, #ffb84d); }
+.cc__timer-text { position: relative; line-height: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.cc__banner {
+  --pc: var(--primary);
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--pc) 50%, transparent);
+  background: color-mix(in srgb, var(--pc) 12%, transparent);
+  text-align: center;
+  font-weight: 700;
+}
+.cc__banner.is-challenge { border-color: #ffb84d; background: rgba(255, 184, 77, 0.14); color: #ffd28a; }
+.cc__banner.is-over { border-color: #4fd1a5; background: rgba(79, 209, 165, 0.14); }
+
+.cc__board {
+  position: relative;
+  height: clamp(420px, 60vh, 720px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0a0c12;
+}
+.cc__canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.cc__canvas.is-panning { cursor: grabbing; }
+.cc__recenter { position: absolute; top: 10px; right: 10px; padding: 6px 12px; font-size: 0.85rem; }
+
+.cc__hint { min-height: 1.4em; text-align: center; }
+.cc__hint.is-error { color: #ff8a8a; }
+.cc__hint.is-good { color: #4fd1a5; font-weight: 700; }
+
+.cc__controls { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: center; }
+.cc__group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cc__kinds { display: inline-flex; padding: 4px; gap: 4px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
+.cc__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  transition: all 0.2s var(--ease);
+}
+.cc__kind:hover { color: var(--text); }
+.cc__kind.is-selected { background: rgba(108, 140, 255, 0.22); color: var(--text); box-shadow: inset 0 0 0 1px var(--primary); }
+.cc__count { min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
+.cc__toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.btn.is-armed { background: rgba(255, 93, 93, 0.2); border-color: #ff5d5d; }
+
+.cc__result { display: grid; justify-items: center; gap: 4px; padding: 14px; border: 1px solid #4fd1a5; border-radius: 14px; background: rgba(79, 209, 165, 0.08); }
+.cc__result-msg { font-size: 1.2rem; font-weight: 800; }
+
+.cc__how { color: var(--muted); font-size: 0.92rem; }
+.cc__how summary { cursor: pointer; font-weight: 600; color: var(--text); }
+.cc__how ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.5; }
+
+@media (max-width: 760px) {
+  .cc__hud { grid-template-columns: 1fr 1fr; }
+  .cc__center { grid-column: 1 / -1; order: -1; }
+}
