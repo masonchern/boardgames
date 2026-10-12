@@ -242,5 +242,5 @@ Separate loops all count as closed; deck empty with no closed circuit = draw; ti
 - The view dispatches `TIMEOUT` when its countdown hits zero; the rules accept it only if `meta.now >= state.deadline`. In online play the server must stamp time and be the one to enforce it.
 - Cards are data: `CARD_KINDS` in `circuit.js` lists each kind's rotations and line ends. The win condition is the single function `isWinningBoard(board, options)`. Option values like `gridSize`, `deckSize`, `maxPerTurn` already exist in `state.options` but are not exposed in the UI.
 - **Advanced mode (Mason plans to add later):** new card kinds (e.g. crossings, T-pieces) go in `CARD_KINDS`; new win conditions (e.g. single loop, minimum size) go in `isWinningBoard`. A selectable variant could be added as another manifest option.
-- Rendering is a `<canvas>` with pan (drag), zoom (wheel), hotkeys (R rotate, T toggle kind, Z undo), and a live "open ends" overlay (red dots).
+- Rendering is a `<canvas>` with pan (drag), zoom (wheel), hotkeys (R rotate, T toggle kind, Z undo), and a live "open ends" overlay (red dots). Each card kind remembers its own rotation (`rots` in `view.js`): Rotate only turns the selected kind, and the Straight/Turn buttons preview their current rotation.
 - Players are still `Player 1` / `Player 2` (no custom names yet).

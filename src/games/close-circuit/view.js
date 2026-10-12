@@ -50,7 +50,9 @@ export function mount(container, api) {
   let state = null;
   let draft = []; // cards placed this turn but not submitted yet
   let kind = 'straight';
-  let rot = 0;
+  // Each card type remembers its own rotation, so rotating one never changes the other.
+  const rots = { straight: 0, turn: 0 };
+  const currentRot = () => rots[kind];
   let hover = null; // { x, y } cell under the pointer
   let showOpenEnds = true;
   let timeoutSentFor = null;
@@ -183,11 +185,11 @@ export function mount(container, api) {
   // ---- Card controls ----
   function setKind(next) {
     kind = next;
-    rot %= CARD_KINDS[kind].rotations;
     refresh();
   }
   function rotate() {
-    rot = (rot + 1) % CARD_KINDS[kind].rotations;
+    // Only the selected card type turns; the other one stays as it was
+    rots[kind] = (rots[kind] + 1) % CARD_KINDS[kind].rotations;
     refresh();
   }
   function undo() {
@@ -204,14 +206,14 @@ export function mount(container, api) {
 
   function placeAt(x, y) {
     if (!state || state.phase === 'over' || draft.length >= maxDraft()) return;
-    const problem = placementProblem(state, draft, { x, y, kind, rot });
+    const problem = placementProblem(state, draft, { x, y, kind, rot: currentRot() });
     if (problem) {
       hint.textContent = problem;
       hint.classList.remove('is-good');
       hint.classList.add('is-error');
       return;
     }
-    draft.push({ x, y, kind, rot });
+    draft.push({ x, y, kind, rot: currentRot() });
     refresh();
   }
 
@@ -377,7 +379,7 @@ export function mount(container, api) {
 
     // Ghost under the pointer
     if (active && hover && draft.length < maxDraft()) {
-      const candidate = { x: hover.x, y: hover.y, kind, rot };
+      const candidate = { x: hover.x, y: hover.y, kind, rot: currentRot() };
       const problem = placementProblem(state, draft, candidate);
       if (!problem) {
         drawPiece(ctx, candidate, me, { alpha: 0.4 });
@@ -421,9 +423,9 @@ export function mount(container, api) {
 
     straightBtn.classList.toggle('is-selected', kind === 'straight');
     turnBtn.classList.toggle('is-selected', kind === 'turn');
-    // Each button previews the orientation that kind would have (same rule as setKind: rot % rotations)
-    straightIcon.innerHTML = cardIcon('straight', rot % CARD_KINDS.straight.rotations);
-    turnIcon.innerHTML = cardIcon('turn', rot % CARD_KINDS.turn.rotations);
+    // Each button shows that card type's own current rotation
+    straightIcon.innerHTML = cardIcon('straight', rots.straight);
+    turnIcon.innerHTML = cardIcon('turn', rots.turn);
 
     const max = maxDraft();
     countEl.textContent = active ? `Cards this turn: ${draft.length} / ${max}` : '';
@@ -516,7 +518,7 @@ export function mount(container, api) {
     const [x, y] = toCell(px, py);
     if (!hover || hover.x !== x || hover.y !== y) hover = { x, y };
     if (state && state.phase !== 'over' && draft.length < maxDraft() && !dragging?.moved) {
-      const problem = placementProblem(state, draft, { x, y, kind, rot });
+      const problem = placementProblem(state, draft, { x, y, kind, rot: currentRot() });
       if (problem) {
         hint.textContent = problem;
         hint.classList.remove('is-good');
