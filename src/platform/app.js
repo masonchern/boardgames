@@ -1,4 +1,5 @@
 import { el } from '../core/dom.js';
+import { buildLabel } from '../core/buildInfo.js';
 import { navigate, startRouter } from '../core/router.js';
 import { renderLobby } from './pages/lobby.js';
 import { renderGamePage } from './pages/gamePage.js';
@@ -13,7 +14,9 @@ const TABS = [
 ];
 
 export function createApp(root) {
-  const content = el('main', { class: 'content' });
+  const pageSlot = el('div', { class: 'content__page' });
+  const buildStamp = el('footer', { class: 'build-info' }, buildLabel());
+  const content = el('main', { class: 'content' }, pageSlot, buildStamp);
   const navButtons = new Map();
 
   const sidebar = el(
@@ -34,7 +37,7 @@ export function createApp(root) {
         return btn;
       }),
     ),
-    el('div', { class: 'sidebar__footer muted' }, 'Guest mode · v0.1'),
+    el('div', { class: 'sidebar__footer muted' }, 'Guest mode'),
   );
 
   const shell = el('div', { class: 'shell' }, sidebar, content);
@@ -60,7 +63,7 @@ export function createApp(root) {
     else node = renderLobby();
 
     node.classList.add('page-enter');
-    content.replaceChildren(node);
+    pageSlot.replaceChildren(node);
   }
 
   startRouter(renderRoute);

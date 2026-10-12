@@ -102,7 +102,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .nav__icon { width: 22px; text-align: center; }
 .sidebar__footer { margin-top: auto; padding: 0 8px; font-size: 0.8rem; }
 
-.content { padding: 40px clamp(20px, 4vw, 56px); min-width: 0; }
+.content { display: flex; flex-direction: column; padding: 40px clamp(20px, 4vw, 56px); min-width: 0; }
+.content__page { flex: 1; min-width: 0; }
+
+/* Build stamp: lets you check which deployed version a device is showing */
+.build-info {
+  margin-top: 32px;
+  padding-top: 12px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+  user-select: text;
+}
 
 /* ===== Pages ===== */
 .page { max-width: 1100px; margin: 0 auto; }
