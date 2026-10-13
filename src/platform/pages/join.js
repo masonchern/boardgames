@@ -2,6 +2,7 @@ import { el } from '../../core/dom.js';
 import { ensureSession } from '../../core/auth.js';
 import { navigate } from '../../core/router.js';
 import { api } from '../../core/api.js';
+import { t, te } from '../../core/i18n.js';
 
 /** Join by code from the URL or a form. */
 export function renderJoinPage(codeFromUrl) {
@@ -19,7 +20,7 @@ export function renderJoinPage(codeFromUrl) {
   async function go(code) {
     const c = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (c.length !== 6) {
-      err.textContent = 'Room codes are 6 characters.';
+      err.textContent = t('join.badCode');
       err.hidden = false;
       return;
     }
@@ -28,7 +29,7 @@ export function renderJoinPage(codeFromUrl) {
       await api(`/api/rooms/${c}/join`, { method: 'POST' });
       navigate(`room/${c}`);
     } catch (e) {
-      err.textContent = e.message;
+      err.textContent = te(e.message);
       err.hidden = false;
     }
   }
@@ -40,7 +41,7 @@ export function renderJoinPage(codeFromUrl) {
   return el(
     'section',
     { class: 'page' },
-    el('header', { class: 'page__header' }, el('h1', {}, 'Join a room'), el('p', {}, 'Enter a room code from a friend.')),
+    el('header', { class: 'page__header' }, el('h1', {}, t('join.title')), el('p', {}, t('join.blurb'))),
     el(
       'div',
       { class: 'panel' },
@@ -55,7 +56,7 @@ export function renderJoinPage(codeFromUrl) {
           },
         },
         input,
-        el('button', { class: 'btn', type: 'submit' }, 'Join'),
+        el('button', { class: 'btn', type: 'submit' }, t('join.button')),
       ),
     ),
   );

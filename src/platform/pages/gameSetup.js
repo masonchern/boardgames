@@ -1,4 +1,5 @@
 import { el } from '../../core/dom.js';
+import { t } from '../../core/i18n.js';
 
 /**
  * Generic pre-game setup screen, built from `manifest.options`.
@@ -18,8 +19,11 @@ export function renderGameSetup(manifest, handlers) {
   const onLocal = typeof handlers === 'function' ? handlers : handlers.onLocal;
   const onOnline = typeof handlers === 'function' ? null : handlers.onOnline;
   const readers = new Map(); // option id -> () => value
+  const gameId = manifest.id;
 
-  const rows = (manifest.options ?? []).map((def) => (def.type === 'select' ? selectRow(def, readers) : numberRow(def, readers)));
+  const rows = (manifest.options ?? []).map((def) =>
+    def.type === 'select' ? selectRow(gameId, def, readers) : numberRow(gameId, def, readers),
+  );
 
   function readValues() {
     return Object.fromEntries([...readers].map(([id, read]) => [id, read()]));
@@ -35,13 +39,13 @@ export function renderGameSetup(manifest, handlers) {
       },
     },
     el('div', { class: 'setup__icon' }, manifest.icon ?? '🎲'),
-    el('h2', {}, `${manifest.title}: game setup`),
-    el('p', { class: 'muted' }, 'Choose your settings, then start. Defaults are a good place to begin.'),
+    el('h2', {}, t('setup.heading', { title: optFallback(`game.${gameId}.title`, manifest.title) })),
+    el('p', { class: 'muted' }, t('setup.blurb')),
     el('div', { class: 'setup__fields' }, rows),
     el(
       'div',
       { class: 'row-actions' },
-      el('button', { class: 'btn', type: 'submit' }, 'Play on this device'),
+      el('button', { class: 'btn', type: 'submit' }, t('setup.local')),
       onOnline &&
         el(
           'button',
@@ -50,13 +54,22 @@ export function renderGameSetup(manifest, handlers) {
             type: 'button',
             onclick: () => onOnline(readValues()),
           },
-          'Play online',
+          t('setup.online'),
         ),
     ),
   );
 }
 
-function numberRow(def, readers) {
+function optFallback(key, fallback) {
+  const got = t(key);
+  return got === key ? fallback : got;
+}
+
+function optField(gameId, def, field, fallback) {
+  return optFallback(`opt.${gameId}.${def.id}.${field}`, fallback);
+}
+
+function numberRow(gameId, def, readers) {
   const input = el('input', {
     type: 'number',
     min: def.min,
@@ -76,7 +89,7 @@ function numberRow(def, readers) {
         input.required = !noLimit.checked;
       },
     });
-    unlimitedLabel = el('label', { class: 'field__nolimit' }, noLimit, 'No limit');
+    unlimitedLabel = el('label', { class: 'field__nolimit' }, noLimit, t('setup.noLimit'));
   }
 
   readers.set(def.id, () => {
@@ -86,21 +99,24 @@ function numberRow(def, readers) {
     return Math.min(def.max ?? v, Math.max(def.min ?? v, v));
   });
 
+  const desc = optField(gameId, def, 'desc', def.description);
+  const unit = optField(gameId, def, 'unit', def.unit);
+
   return el(
     'div',
     { class: 'field' },
     el(
       'div',
       { class: 'field__text' },
-      el('span', { class: 'field__label' }, def.label),
-      def.description && el('span', { class: 'muted' }, def.description),
+      el('span', { class: 'field__label' }, optField(gameId, def, 'label', def.label)),
+      desc && el('span', { class: 'muted' }, desc),
     ),
-    el('div', { class: 'field__input' }, input, def.unit && el('span', { class: 'muted' }, def.unit), unlimitedLabel),
+    el('div', { class: 'field__input' }, input, unit && el('span', { class: 'muted' }, unit), unlimitedLabel),
   );
 }
 
 /** A group of big radio-style buttons, one per choice. */
-function selectRow(def, readers) {
+function selectRow(gameId, def, readers) {
   let value = def.default;
   const buttons = def.choices.map((choice) => {
     const btn = el(
@@ -114,8 +130,9 @@ function selectRow(def, readers) {
           sync();
         },
       },
-      el('span', { class: 'choice__label' }, choice.label),
-      choice.description && el('span', { class: 'choice__desc' }, choice.description),
+      el('span', { class: 'choice__label' }, optFallback(`opt.${gameId}.${def.id}.${choice.value}`, choice.label)),
+      choice.description &&
+        el('span', { class: 'choice__desc' }, optFallback(`opt.${gameId}.${def.id}.${choice.value}.desc`, choice.description)),
     );
     return { choice, btn };
   });
@@ -137,8 +154,8 @@ function selectRow(def, readers) {
     el(
       'div',
       { class: 'field__text' },
-      el('span', { class: 'field__label' }, def.label),
-      def.description && el('span', { class: 'muted' }, def.description),
+      el('span', { class: 'field__label' }, optField(gameId, def, 'label', def.label)),
+      def.description && el('span', { class: 'muted' }, optField(gameId, def, 'desc', def.description)),
     ),
     el('div', { class: 'choices' }, buttons.map((b) => b.btn)),
   );

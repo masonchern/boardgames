@@ -1,21 +1,12 @@
 import './styles.css';
 import { el } from '../../core/dom.js';
-import { rules, placementProblem, centerCell, poolCounts, ADVANCED } from './rules.js';
+import { rules, placementProblem, centerCell, poolCounts, ADVANCED, limitRequirement } from './rules.js';
 import { CARD_KINDS, E, S, cellKey, openEnds, isWinningBoard, pieceEnds } from './circuit.js';
+import { t, te, onLang } from '../../core/i18n.js';
 
-/** Hand card names and tooltips (advanced mode). */
-const CARD_INFO = {
-  straight: { name: 'Straight', tip: 'Straight line' },
-  turn: { name: 'Turn', tip: '90° turn' },
-  cross: {
-    name: 'Cross',
-    tip: 'Turns a straight line that is already on the board into an intersection (+); all four sides of it must connect. Tap this card, then tap a straight line on the board.',
-  },
-  limit: {
-    name: 'Limit',
-    tip: 'Your opponent must play 3 straight/turn cards on their next turn, or all of them if they hold fewer than 3. Tap it to use it this turn, tap again to take it back.',
-  },
-};
+function cardInfo(type) {
+  return { name: t(`cc.card.${type}`), tip: t(`cc.card.${type}.tip`) };
+}
 const HAND_ORDER = ['straight', 'turn', 'cross', 'limit'];
 const isLineType = (type) => type === 'straight' || type === 'turn';
 
@@ -108,7 +99,7 @@ export function mount(container, api) {
       'div',
       { class: 'cc__player', style: { '--pc': colors[p.id] } },
       el('span', { class: 'cc__dot' }),
-      el('div', {}, name, el('div', { class: 'muted' }, 'wins')),
+      el('div', {}, name, el('div', { class: 'muted cc__wins-label' }, t('cc.wins'))),
       wins,
     );
     return { node, wins, name };
@@ -135,13 +126,10 @@ export function mount(container, api) {
   // On-screen zoom buttons: they work everywhere, even where pinch gestures are unreliable.
   const zoomButton = (label, title, onclick) =>
     el('button', { class: 'btn btn--ghost cc__zbtn', title, 'aria-label': title, onclick }, label);
-  const zoomBar = el(
-    'div',
-    { class: 'cc__zoom' },
-    zoomButton('−', 'Zoom out', () => zoomBy(1 / 1.4)),
-    zoomButton('+', 'Zoom in', () => zoomBy(1.4)),
-    zoomButton('Fit', 'Zoom in to show all played cards plus a 2-tile border', () => { recenter(); scheduleDraw(); }),
-  );
+  const zoomOutBtn = zoomButton('−', t('cc.zoomOut'), () => zoomBy(1 / 1.4));
+  const zoomInBtn = zoomButton('+', t('cc.zoomIn'), () => zoomBy(1.4));
+  const zoomFitBtn = zoomButton(t('cc.fit'), t('cc.fitTitle'), () => { recenter(); scheduleDraw(); });
+  const zoomBar = el('div', { class: 'cc__zoom' }, zoomOutBtn, zoomInBtn, zoomFitBtn);
   const boardWrap = el('div', { class: 'cc__board' }, canvas, zoomBar);
 
   // The icons are redrawn in refresh() so they follow the current rotation.
@@ -150,8 +138,10 @@ export function mount(container, api) {
   // In a face-up challenge or solve these also show how many of each card are left in the deck.
   const straightLeft = el('span', { class: 'cc__left' });
   const turnLeft = el('span', { class: 'cc__left' });
-  const straightBtn = el('button', { class: 'cc__kind', title: 'Straight line (T)', onclick: () => setKind('straight') }, straightIcon, el('span', {}, 'Straight'), straightLeft);
-  const turnBtn = el('button', { class: 'cc__kind', title: 'Turning line (T)', onclick: () => setKind('turn') }, turnIcon, el('span', {}, 'Turn'), turnLeft);
+  const straightLabel = el('span', {}, t('cc.straight'));
+  const turnLabel = el('span', {}, t('cc.turn'));
+  const straightBtn = el('button', { class: 'cc__kind', title: t('cc.straightTitle'), onclick: () => setKind('straight') }, straightIcon, straightLabel, straightLeft);
+  const turnBtn = el('button', { class: 'cc__kind', title: t('cc.turnTitle'), onclick: () => setKind('turn') }, turnIcon, turnLabel, turnLeft);
   const kindGroup = el('div', { class: 'cc__kinds' }, straightBtn, turnBtn);
   const poolNote = el('div', { class: 'cc__poolnote muted' });
 
@@ -166,19 +156,23 @@ export function mount(container, api) {
   function renderHelp() {
     const type = hoverHelp ?? pinnedHelp;
     handHelp.hidden = !type;
-    if (type) handHelp.replaceChildren(el('b', {}, `${CARD_INFO[type].name}: `), CARD_INFO[type].tip);
+    if (type) {
+      const info = cardInfo(type);
+      handHelp.replaceChildren(el('b', {}, `${info.name}: `), info.tip);
+    }
   }
   const handPanel = el('div', { class: 'cc__handpanel' }, handLabel, handCards, handHelp);
   handPanel.hidden = true;
-  const rotateBtn = el('button', { class: 'btn btn--ghost', title: 'Rotate (R or right-click)', onclick: rotate }, '⟳ Rotate');
+  const rotateBtn = el('button', { class: 'btn btn--ghost', title: t('cc.rotateTitle'), onclick: rotate }, t('cc.rotate'));
   const countEl = el('div', { class: 'cc__count muted' });
-  const undoBtn = el('button', { class: 'btn btn--ghost', title: 'Undo last card (Z)', onclick: undo }, 'Undo');
-  const endBtn = el('button', { class: 'btn', onclick: submit }, 'End turn');
-  const challengeBtn = confirmButton('No solution! (challenge)', 'Click again to challenge', () => api.dispatch({ type: 'CHALLENGE' }));
-  const solveBtn = confirmButton('Solve!', 'Click again to solve', () => api.dispatch({ type: 'SOLVE' }));
+  const undoBtn = el('button', { class: 'btn btn--ghost', title: t('cc.undoTitle'), onclick: undo }, t('cc.undo'));
+  const endBtn = el('button', { class: 'btn', onclick: submit }, t('cc.endTurn'));
+  const challengeBtn = confirmButton('cc.challenge', 'cc.challenge.armed', () => api.dispatch({ type: 'CHALLENGE' }));
+  const solveBtn = confirmButton('cc.solve', 'cc.solve.armed', () => api.dispatch({ type: 'SOLVE' }));
   solveBtn.node.hidden = true;
-  const resignBtn = confirmButton('Resign', 'Click again to resign', () => api.dispatch({ type: 'CONCEDE' }));
+  const resignBtn = confirmButton('cc.resign', 'cc.resign.armed', () => api.dispatch({ type: 'CONCEDE' }));
   const openEndsToggle = el('input', { type: 'checkbox', checked: true, onchange: (e) => { showOpenEnds = e.target.checked; scheduleDraw(); } });
+  const openEndsLabel = el('span', {}, t('cc.openEnds'));
 
   const controls = el(
     'div',
@@ -188,45 +182,38 @@ export function mount(container, api) {
     poolNote,
     el('div', { class: 'cc__group' }, countEl, undoBtn, endBtn),
     el('div', { class: 'cc__group' }, challengeBtn.node, solveBtn.node, resignBtn.node),
-    el('label', { class: 'cc__toggle muted' }, openEndsToggle, 'Show open ends'),
+    el('label', { class: 'cc__toggle muted' }, openEndsToggle, openEndsLabel),
   );
 
   const resultMsg = el('div', { class: 'cc__result-msg' });
-  const nextBtn = el('button', { class: 'btn', onclick: () => api.dispatch({ type: 'NEXT_GAME' }) }, 'Next game');
+  const nextBtn = el('button', { class: 'btn', onclick: () => api.dispatch({ type: 'NEXT_GAME' }) }, t('cc.nextGame'));
+  const resultBackBtn = el('button', { class: 'btn btn--ghost', onclick: api.exit }, t('cc.backLobby'));
   const result = el(
     'div',
     { class: 'cc__result' },
     resultMsg,
-    el('div', { class: 'row-actions' }, nextBtn, el('button', { class: 'btn btn--ghost', onclick: api.exit }, 'Back to lobby')),
+    el('div', { class: 'row-actions' }, nextBtn, resultBackBtn),
   );
 
   // The rules text depends on the mode, so it is filled in once the first state arrives.
   const howList = el('ul', {});
-  const howTo = el('details', { class: 'cc__how' }, el('summary', {}, 'How to play'), howList);
-  const CONTROLS_TEXT =
-    'Controls: click or tap a cell to place · Rotate button (R or right-click) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel, pinch or the − / + buttons to zoom · Fit zooms in as far as possible while still showing every card plus a 2-tile border. Red dots mark open line ends.';
+  const howSummary = el('summary', {}, t('cc.how'));
+  const howTo = el('details', { class: 'cc__how' }, howSummary, howList);
   function fillHowTo(advanced) {
     const lines = advanced
       ? [
-          'Advanced mode: the deck has 48 straight and 24 turn cards plus 4 Limit and 4 Cross function cards, shuffled. Each player holds 5 cards and refills to 5 after every turn until the deck runs out.',
-          'On your turn play 1 to 3 cards from your hand (function cards count too, and at least one must be a straight or turn). Tap a card, then tap a cell next to the board. The first card goes in the center. Then press End turn.',
-          'Limit: your opponent must play 3 straight/turn cards next turn (or all they have if fewer). Cross: turns a straight line already on the board into an intersection (+); all four sides must connect. Hover over or tap a function card to see what it does.',
-          'The card backs above the board show how many cards the other player holds. Function cards have a gift-box back, so you can see how many they have, but not which.',
-          'If your hand has no straight or turn card, it is shuffled back and you draw 5 again.',
-          'Close the circuit to win: every line end must connect, nothing sticking out. Instead of playing you can say "No solution!". The other player then sees the cards left in the deck and may pick any of them to close the circuit. If they do they win, otherwise you do.',
-          `Once ${ADVANCED.solveAtDeck} or fewer cards are left in the deck either player can say "Solve!" on their turn: they must close the circuit with the cards left in the deck, or they lose.`,
-          'When the deck runs out you play the cards left in your hands. If nobody can play any more it is a draw.',
-          'Run out of time and you lose the game. Player 1 starts the first game, player 2 the next, and so on.',
+          t('cc.how.adv1'),
+          t('cc.how.adv2'),
+          t('cc.how.adv3'),
+          t('cc.how.adv4'),
+          t('cc.how.adv5'),
+          t('cc.how.adv6'),
+          t('cc.how.adv7', { n: ADVANCED.solveAtDeck }),
+          t('cc.how.adv8'),
+          t('cc.how.adv9'),
         ]
-      : [
-          'Both players share one deck of 48 line cards. Each card can be placed as a straight line or a 90° turn.',
-          'On your turn place 1 to 3 cards. The very first card goes in the center. After that cards can go anywhere, they do not have to touch the board. But the cards you place in one turn must be next to each other in a straight line (any mix of straights and turns). An L shape is not allowed. Then press End turn.',
-          'Close the circuit to win: every line end on the board must connect to another, with nothing sticking out, and every card on the board must belong to the same single circuit. A square or rectangle works; a single line, or two separate loops, does not.',
-          'Instead of placing cards you can challenge with "No solution!". The other player then gets extra time and may use all the cards left in the deck, in any shape, to close the circuit. If they manage it they win, otherwise you do.',
-          'When the deck runs out the game is a draw unless the circuit is closed.',
-          'Run out of time and you lose the game. Player 1 starts the first game, player 2 the next, and so on.',
-        ];
-    howList.replaceChildren(...[...lines, CONTROLS_TEXT].map((t) => el('li', {}, t)));
+      : [t('cc.how.n1'), t('cc.how.n2'), t('cc.how.n3'), t('cc.how.n4'), t('cc.how.n5'), t('cc.how.n6')];
+    howList.replaceChildren(...[...lines, t('cc.how.controls')].map((line) => el('li', {}, line)));
   }
 
   const root = el(
@@ -309,13 +296,16 @@ export function mount(container, api) {
     return problem ?? placementProblem(state, draft, item);
   }
 
-  function confirmButton(label, armedLabel, onConfirm) {
+  function confirmButton(idleKey, armedKey, onConfirm) {
     let timer = null;
-    const node = el('button', { class: 'btn btn--ghost' }, label);
+    const node = el('button', { class: 'btn btn--ghost' }, t(idleKey));
     const disarm = () => {
       clearTimeout(timer);
-      node.textContent = label;
+      node.textContent = t(idleKey);
       node.classList.remove('is-armed');
+    };
+    const relabel = () => {
+      node.textContent = t(node.classList.contains('is-armed') ? armedKey : idleKey);
     };
     node.addEventListener('click', () => {
       if (node.classList.contains('is-armed')) {
@@ -323,11 +313,11 @@ export function mount(container, api) {
         onConfirm();
       } else {
         node.classList.add('is-armed');
-        node.textContent = armedLabel;
+        node.textContent = t(armedKey);
         timer = setTimeout(disarm, 4000);
       }
     });
-    return { node, disarm };
+    return { node, disarm, relabel };
   }
 
   // ---- Card controls ----
@@ -376,9 +366,29 @@ export function mount(container, api) {
     refresh();
   }
   function showError(message) {
-    hint.textContent = message;
+    hint.textContent = te(message);
     hint.classList.remove('is-good');
     hint.classList.add('is-error');
+  }
+
+  function statusText(st) {
+    const nameOf = (id) => st.players.find((p) => p.id === id)?.name ?? '?';
+    const actor = st.players[st.current];
+    if (st.phase === 'over') {
+      const { winnerId, reason } = st.result;
+      const winner = winnerId ? nameOf(winnerId) : '';
+      const loser = winnerId ? nameOf(st.players.find((p) => p.id !== winnerId).id) : '';
+      return t(`cc.result.${reason}`, { winner, loser });
+    }
+    if (st.phase === 'challenge') return t('cc.status.challenge', { name: nameOf(st.challengerId), actor: actor.name });
+    if (st.phase === 'solve') return t('cc.status.solve', { actor: actor.name });
+    const need = limitRequirement(st, actor.id);
+    if (need === null) return t('cc.status.turn', { name: actor.name });
+    return t('cc.status.limited', { name: actor.name, n: need, s: need === 1 ? '' : 's' });
+  }
+
+  function waitingFor() {
+    return t('cc.hint.wait', { name: state.players.find((p) => p.id === actorId())?.name ?? t('cc.otherPlayer') });
   }
   function submit() {
     if (!state || state.phase === 'over' || !draft.length || !isMyTurn()) return;
@@ -701,10 +711,12 @@ export function mount(container, api) {
     const handPlay = active && inHandPlay();
     const pool = active && inPool();
     root.classList.toggle('cc--advanced', advanced);
-    gameInfo.textContent = `Game ${state.gameNumber} · ${state.deckRemaining} of ${state.deckTotal} cards left${state.draws ? ` · ${state.draws} draw${state.draws > 1 ? 's' : ''}` : ''}`;
+    gameInfo.textContent =
+      t('cc.gameInfo', { n: state.gameNumber, left: state.deckRemaining, total: state.deckTotal }) +
+      (state.draws ? t('cc.gameInfo.draws', { n: state.draws, s: state.draws > 1 ? 's' : '' }) : '');
 
-    banner.textContent = status.message;
-    notice.textContent = state.notice ?? '';
+    banner.textContent = statusText(state);
+    notice.textContent = te(state.notice);
     notice.hidden = !state.notice || !active;
     renderHands(active, handPlay);
     banner.classList.toggle('is-challenge', challenge);
@@ -727,15 +739,19 @@ export function mount(container, api) {
       turnLeft.textContent = `×${left.turn}`;
       straightBtn.disabled = left.straight <= 0;
       turnBtn.disabled = left.turn <= 0;
-      poolNote.textContent = `Cards left in the deck: ${left.straight} straight, ${left.turn} turn. Pick any of them, as many as you need.`;
+      poolNote.textContent = t('cc.poolNote', { s: left.straight, u: left.turn });
     } else {
       straightBtn.disabled = turnBtn.disabled = false;
     }
     rotateBtn.hidden = handPlay && selectedCard()?.type !== 'straight' && selectedCard()?.type !== 'turn';
 
     const max = maxDraft();
-    countEl.textContent = !active ? '' : max === Infinity ? `Cards used: ${draft.length}` : `Cards this turn: ${draft.length} / ${max}`;
-    endBtn.textContent = challenge || pool ? 'Submit solution' : 'End turn';
+    countEl.textContent = !active
+      ? ''
+      : max === Infinity
+        ? t('cc.cardsUsed', { n: draft.length })
+        : t('cc.cardsTurn', { n: draft.length, max });
+    endBtn.textContent = challenge || pool ? t('cc.submit') : t('cc.endTurn');
     endBtn.disabled = !active || !draft.length || !isMyTurn();
     undoBtn.disabled = !draft.length;
     const can = (type) =>
@@ -745,17 +761,17 @@ export function mount(container, api) {
     solveBtn.node.disabled = !can('SOLVE');
     solveBtn.node.title =
       state.deckRemaining > ADVANCED.solveAtDeck
-        ? `Solve unlocks when ${ADVANCED.solveAtDeck} or fewer cards remain in the deck`
-        : 'Close the circuit with the cards left in the deck, or lose';
+        ? t('cc.solveLocked', { n: ADVANCED.solveAtDeck })
+        : t('cc.solveReady');
     resignBtn.node.disabled = !active || !isMyTurn();
     controls.classList.toggle('is-disabled', !active);
     controls.hidden = !active;
 
     result.hidden = active;
     if (!active) {
-      resultMsg.textContent = status.message;
+      resultMsg.textContent = statusText(state);
       const next = state.players[1 - state.starterIndex];
-      nextBtn.textContent = `Next game · ${next.name} starts`;
+      nextBtn.textContent = t('cc.nextStarts', { name: next.name });
     }
 
     updateHint();
@@ -770,7 +786,7 @@ export function mount(container, api) {
         'span',
         {
           class: `cc__back ${isFunction ? 'cc__back--fn' : 'cc__back--line'}`,
-          title: isFunction ? 'A function card' : 'A straight or turn card',
+          title: isFunction ? t('cc.back.fn') : t('cc.back.line'),
         },
         isFunction ? '🎁' : '🐾',
       );
@@ -787,7 +803,7 @@ export function mount(container, api) {
       'button',
       {
         class: `cc__hcard cc__hcard--${card.type}${selected && !used ? ' is-selected' : ''}${used ? ' is-used' : ''}`,
-        title: CARD_INFO[card.type].tip,
+        title: cardInfo(card.type).tip,
         // A used Limit card can still be tapped to take it back
         disabled: used && card.type !== 'limit',
         onclick: () => pickCard(card),
@@ -804,7 +820,7 @@ export function mount(container, api) {
         },
       },
       el('span', { class: 'cc__hface', html: face }),
-      el('span', { class: 'cc__hname' }, CARD_INFO[card.type].name),
+      el('span', { class: 'cc__hname' }, cardInfo(card.type).name),
     );
   }
 
@@ -818,7 +834,7 @@ export function mount(container, api) {
     const ownerId = handOwnerId() ?? actorId();
     const oppId = state.players.find((p) => p.id !== ownerId).id;
     const oppHand = state.hands[oppId] ?? [];
-    oppLabel.textContent = `${nameOf(oppId)}'s hand: ${oppHand.length} card${oppHand.length === 1 ? '' : 's'}`;
+    oppLabel.textContent = t('cc.oppHand', { name: nameOf(oppId), n: oppHand.length, s: oppHand.length === 1 ? '' : 's' });
     oppBacks.replaceChildren(...backsOf(oppHand));
 
     if (!handPlay) return;
@@ -826,10 +842,10 @@ export function mount(container, api) {
     if (handCovered()) {
       pinnedHelp = hoverHelp = null;
       renderHelp();
-      handLabel.textContent = `Pass the device to ${nameOf(ownerId)}`;
+      handLabel.textContent = t('cc.passTo', { name: nameOf(ownerId) });
       handCards.replaceChildren(
         ...backsOf(hand),
-        el('button', { class: 'btn', onclick: () => { revealedKey = turnKey(); refresh(); } }, `Show ${nameOf(ownerId)}'s cards`),
+        el('button', { class: 'btn', onclick: () => { revealedKey = turnKey(); refresh(); } }, t('cc.showCards', { name: nameOf(ownerId) })),
       );
       return;
     }
@@ -839,7 +855,7 @@ export function mount(container, api) {
     }
     const selected = selectedCard();
     if (selected && isLineType(selected.type)) kind = selected.type;
-    handLabel.textContent = `${nameOf(ownerId)}'s hand`;
+    handLabel.textContent = t('cc.myHand', { name: nameOf(ownerId) });
     const sorted = [...hand].sort((a, b) => HAND_ORDER.indexOf(a.type) - HAND_ORDER.indexOf(b.type));
     handCards.replaceChildren(...sorted.map(handCard));
     renderHelp();
@@ -851,30 +867,26 @@ export function mount(container, api) {
     if (!state || state.phase === 'over') {
       hint.textContent = '';
     } else if (draft.some(hasPosition) && isWinningBoard(mergedBoard(), state.options)) {
-      hint.textContent = 'This closes the circuit! Press End turn to win.';
+      hint.textContent = t('cc.hint.win');
       hint.classList.add('is-good');
     } else if (inHandPlay() && handCovered()) {
-      hint.textContent = 'Only the player on the move should look: press the button below to show your hand.';
+      hint.textContent = t('cc.hint.cover');
     } else if (boardIsEmpty() && !draft.length) {
-      hint.textContent = 'Place the first card in the highlighted center cell.';
+      hint.textContent = t('cc.hint.first');
     } else if (inHandPlay() && selectedCard()?.type === 'cross') {
-      hint.textContent = 'Tap a straight line on the board to turn it into an intersection (+).';
+      hint.textContent = t('cc.hint.cross');
     } else if (inHandPlay() && !isMyTurn()) {
-      hint.textContent = `Waiting for ${state.players.find((p) => p.id === actorId())?.name ?? 'the other player'}…`;
+      hint.textContent = waitingFor();
     } else if (inHandPlay()) {
-      hint.textContent = 'Pick a card from your hand, then tap a cell next to the board. Press End turn when done.';
+      hint.textContent = t('cc.hint.hand');
     } else if (state.phase === 'solve') {
-      hint.textContent = 'Close the circuit with the cards left in the deck, then submit. Every line end must be connected.';
+      hint.textContent = t('cc.hint.solve');
     } else if (state.phase === 'challenge') {
-      hint.textContent = isMyTurn()
-        ? 'Place cards so that every line end is connected, then submit.'
-        : `Waiting for ${state.players.find((p) => p.id === actorId())?.name ?? 'the other player'}…`;
+      hint.textContent = isMyTurn() ? t('cc.hint.challengeMe') : waitingFor();
     } else if (!isMyTurn()) {
-      hint.textContent = `Waiting for ${state.players.find((p) => p.id === actorId())?.name ?? 'the other player'}…`;
+      hint.textContent = waitingFor();
     } else {
-      hint.textContent = draft.length
-        ? 'Add cards next to this turn\'s cards, in one straight line (up to 3).'
-        : 'Tap any empty cell to place a card. Cards in one turn must form a straight line.';
+      hint.textContent = draft.length ? t('cc.hint.addLine') : t('cc.hint.place');
     }
   }
 
@@ -890,7 +902,7 @@ export function mount(container, api) {
     if (state.deadline === null) {
       // No time limit: show it, and never report a timeout
       timerFill.style.width = '100%';
-      timerText.textContent = '∞ No time limit';
+      timerText.textContent = t('cc.noTime');
       timerEl.classList.remove('is-low');
       return;
     }
@@ -1036,6 +1048,41 @@ export function mount(container, api) {
   resizeObserver.observe(boardWrap);
   resizeCanvas();
 
+  function applyChrome() {
+    root.querySelectorAll('.cc__wins-label').forEach((n) => {
+      n.textContent = t('cc.wins');
+    });
+    const setTip = (btn, key) => {
+      const label = t(key);
+      btn.title = label;
+      btn.setAttribute('aria-label', label);
+    };
+    setTip(zoomOutBtn, 'cc.zoomOut');
+    setTip(zoomInBtn, 'cc.zoomIn');
+    zoomFitBtn.textContent = t('cc.fit');
+    setTip(zoomFitBtn, 'cc.fitTitle');
+    straightLabel.textContent = t('cc.straight');
+    turnLabel.textContent = t('cc.turn');
+    straightBtn.title = t('cc.straightTitle');
+    turnBtn.title = t('cc.turnTitle');
+    rotateBtn.textContent = t('cc.rotate');
+    rotateBtn.title = t('cc.rotateTitle');
+    undoBtn.textContent = t('cc.undo');
+    undoBtn.title = t('cc.undoTitle');
+    openEndsLabel.textContent = t('cc.openEnds');
+    howSummary.textContent = t('cc.how');
+    resultBackBtn.textContent = t('cc.backLobby');
+    challengeBtn.relabel();
+    solveBtn.relabel();
+    resignBtn.relabel();
+    if (state) {
+      fillHowTo(isAdvanced());
+      refresh();
+      tick();
+    }
+  }
+  const stopLang = onLang(applyChrome);
+
   return {
     update(next) {
       const previous = state;
@@ -1059,6 +1106,7 @@ export function mount(container, api) {
       tick();
     },
     destroy() {
+      stopLang();
       clearInterval(timerId);
       resizeObserver.disconnect();
       window.removeEventListener('keydown', onKey);

@@ -59,7 +59,7 @@
  * - Advanced: a cross may target a straight placed earlier in the same turn.
  *
  * STATE:   see `freshGame` below.
- * ACTIONS: PLAY { placements } | CHALLENGE | SOLVE | CONCEDE | TIMEOUT | NEXT_GAME
+ * ACTIONS: PLAY { placements } | CHALLENGE | SOLVE | CONCEDE | FORFEIT | TIMEOUT | NEXT_GAME
  *   placement = { kind: 'straight'|'turn', x, y, rot }            (normal mode, and pool plays)
  *             | { kind, x, y, rot, cardId }                       (advanced: card from hand)
  *             | { kind: 'cross', x, y, cardId }                   (advanced: convert a straight)
@@ -406,6 +406,10 @@ export const rules = {
       if (state.deadline === null) return fail('There is no time limit');
       return meta && meta.now >= state.deadline ? ok : fail('The timer has not expired yet');
     }
+    if (action.type === 'FORFEIT') {
+      // Room-level: the disconnected player forfeits even if it is not their turn.
+      return ok;
+    }
 
     if (state.players[state.current].id !== playerId) return fail('Not your turn');
 
@@ -534,6 +538,11 @@ export const rules = {
           { challenge: 'challenge-failed', solve: 'solve-failed' }[state.phase] ?? 'resigned',
         );
 
+      case 'FORFEIT': {
+        const winner = state.players.find((p) => p.id !== playerId);
+        return finish(state, winner?.id ?? null, 'disconnected');
+      }
+
       case 'TIMEOUT':
         return finish(
           state,
@@ -575,6 +584,7 @@ export const rules = {
         'solve-timeout': `${loser} ran out of time while solving. ${winner} wins.`,
         timeout: `${loser} ran out of time. ${winner} wins.`,
         resigned: `${loser} resigned. ${winner} wins.`,
+        disconnected: `${loser} left the game. ${winner} wins.`,
         'deck-empty': 'The deck is empty and the circuit is not closed. Draw.',
         'no-cards': 'Nobody has a straight or turn card left to play. Draw.',
       }[reason];

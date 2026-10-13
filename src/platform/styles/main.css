@@ -52,13 +52,41 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .shell {
   display: grid;
   grid-template-columns: 240px 1fr;
+  grid-template-rows: auto 1fr;
   min-height: 100vh;
+}
+
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--blue-50);
+  border-bottom: 1px solid var(--blue-200);
+  z-index: 30;
+}
+.lang-switch { display: flex; gap: 6px; }
+.lang-switch__btn {
+  border: 1px solid var(--blue-200);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.lang-switch__btn:hover { background: var(--blue-50); }
+.lang-switch__btn.is-active {
+  background: #dcecfd;
+  border-color: var(--primary);
+  font-weight: 800;
 }
 
 .sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -347,8 +375,9 @@ button, summary, label { touch-action: manipulation; -webkit-tap-highlight-color
 /* ===== Responsive ===== */
 @media (max-width: 760px) {
   body { min-height: 100dvh; }
-  .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; min-height: 100dvh; }
+  .shell { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; min-height: 100dvh; }
   .shell.is-in-game .sidebar { display: none; }
+  .topbar { padding: 8px 12px; }
   .content {
     padding: 16px max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
@@ -432,6 +461,21 @@ button, summary, label { touch-action: manipulation; -webkit-tap-highlight-color
 .seat.is-filled { border-style: solid; background: var(--blue-50); }
 .seat__label { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
 .seat__name { font-size: 1.1rem; font-weight: 800; margin-top: 4px; }
+
+.away-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--brown-200);
+  border-radius: 14px;
+  background: var(--brown-50);
+  text-align: center;
+}
+.away-banner p { font-weight: 600; }
 
 .invite-toast {
   position: fixed;

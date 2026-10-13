@@ -1,6 +1,9 @@
 -- Boardgames Hub: accounts, friends, invites, finished matches.
 -- Applied with: wrangler d1 execute boardgames --file=server/schema.sql
 -- (add --local for the local wrangler dev database)
+--
+-- Additive only. Never DROP tables or DELETE rows here. Deploying a new Worker
+-- version re-runs this file; CREATE IF NOT EXISTS keeps existing win/loss data.
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,

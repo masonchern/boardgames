@@ -79,15 +79,18 @@ export class WebSocketTransport {
     this.lastState = null;
     this.lastRoom = null;
     this.queue = [];
+    this.reconnectTimer = null;
+    this.reconnectAttempt = 0;
   }
 
   connect(handlers) {
-    this.handlers = handlers;
-    if (this.lastState) handlers?.onState(this.lastState.state, this.lastState.seq);
+    if (handlers) this.handlers = handlers;
+    if (this.lastState) this.handlers?.onState(this.lastState.state, this.lastState.seq);
     if (this.lastRoom) this.roomListeners.forEach((fn) => fn(this.lastRoom));
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
     this.ws = new WebSocket(this.url);
     this.ws.onopen = () => {
+      this.reconnectAttempt = 0;
       for (const payload of this.queue) this.ws.send(payload);
       this.queue = [];
     };
@@ -108,7 +111,11 @@ export class WebSocketTransport {
       }
     };
     this.ws.onclose = () => {
-      if (!this.closed) this.handlers?.onError(new Error('Disconnected from the room'));
+      this.ws = null;
+      if (this.closed) return;
+      this.reconnectAttempt += 1;
+      const delay = Math.min(8000, 1000 * this.reconnectAttempt);
+      this.reconnectTimer = setTimeout(() => this.connect(), delay);
     };
   }
 
@@ -118,7 +125,13 @@ export class WebSocketTransport {
   }
 
   send({ action, type = 'ACTION' }) {
-    const payload = JSON.stringify(type === 'START' ? { type: 'START' } : { type: 'ACTION', action });
+    const payload = JSON.stringify(
+      type === 'START'
+        ? { type: 'START' }
+        : type === 'CLAIM_DISCONNECT'
+          ? { type: 'CLAIM_DISCONNECT' }
+          : { type: 'ACTION', action },
+    );
     if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(payload);
     else this.queue.push(payload);
   }
@@ -127,10 +140,15 @@ export class WebSocketTransport {
     this.send({ type: 'START' });
   }
 
+  claimDisconnect() {
+    this.send({ type: 'CLAIM_DISCONNECT' });
+  }
+
   close() {
     this.closed = true;
     this.handlers = null;
     this.roomListeners.clear();
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     try {
       this.ws?.close();
     } catch {

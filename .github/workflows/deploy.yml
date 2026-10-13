@@ -60,6 +60,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Apply D1 schema
+        # Additive only (CREATE IF NOT EXISTS). Does not wipe accounts or win/loss.
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

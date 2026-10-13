@@ -1,13 +1,14 @@
 import { GameSession } from './session.js';
 import { getManifest, loadGameModule } from './registry.js';
 import { WebSocketTransport } from './transport.js';
+import { t } from './i18n.js';
 
 /** Default players for local pass-and-play. */
 function defaultLocalPlayers(count) {
   const colors = ['#6c8cff', '#ff6b9a', '#4fd1a5', '#ffb84d'];
   return Array.from({ length: count }, (_, i) => ({
     id: `p${i + 1}`,
-    name: `Player ${i + 1}`,
+    name: t('playerN', { n: i + 1 }),
     color: colors[i % colors.length],
   }));
 }

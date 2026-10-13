@@ -1,11 +1,14 @@
 import { el } from '../../core/dom.js';
+import { t } from '../../core/i18n.js';
 
 /** Placeholder rows. Wire them to a real settings store later. */
-const ROWS = [
-  ['Sound effects', 'Play sounds for moves and results'],
-  ['Music', 'Background music in the lobby'],
-  ['Theme', 'Light (default), dark, and more'],
-];
+function rows() {
+  return [
+    [t('settings.sound'), t('settings.sound.desc')],
+    [t('settings.music'), t('settings.music.desc')],
+    [t('settings.theme'), t('settings.theme.desc')],
+  ];
+}
 
 export function renderSettings() {
   return el(
@@ -14,18 +17,18 @@ export function renderSettings() {
     el(
       'header',
       { class: 'page__header' },
-      el('h1', {}, 'Settings'),
-      el('p', {}, 'Audio, theme and more. Coming soon.'),
+      el('h1', {}, t('settings.title')),
+      el('p', {}, t('settings.blurb')),
     ),
     el(
       'div',
       { class: 'panel' },
-      ROWS.map(([title, desc]) =>
+      rows().map(([title, desc]) =>
         el(
           'div',
           { class: 'setting-row' },
           el('div', {}, el('h3', {}, title), el('p', { class: 'muted' }, desc)),
-          el('span', { class: 'chip chip--coming-soon' }, 'Coming soon'),
+          el('span', { class: 'chip chip--coming-soon' }, t('settings.soon')),
         ),
       ),
     ),

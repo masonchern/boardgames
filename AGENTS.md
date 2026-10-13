@@ -18,9 +18,9 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 3. **High-quality modern UI.** Bright light theme (Mason asked for it: white page background, black text, boxes in light blue / light brown by function), card layout, smooth transitions. Colors are CSS variables at the top of `src/platform/styles/main.css` (`--blue-*` interface, `--brown-*` games and boards, `--green-*`/`--red-*` status). Keep text black or near-black.
 
 ### Current state
-- Sidebar tabs: **Games** (lobby), **Account** (register / sign in / guest / friends), **Settings** (placeholder rows).
+- Sidebar tabs: **Games** (lobby), **Account** (register / sign in / guest / friends), **Settings** (placeholder rows). Top bar switches the whole UI between English and Traditional Chinese.
 - Lobby shows one game: **Close Circuit**, Mason's own invented game, fully playable in Normal and Advanced mode (see section 11). Pass-and-play on one device, or **Play online** (room code, shareable link, friend invite).
-- Online referee is a Cloudflare Worker (`server/`): accounts in D1, one Durable Object per room, WebSockets. The site on GitHub Pages stays static.
+- Online referee is a Cloudflare Worker (`server/`): accounts in D1, one Durable Object per room, WebSockets. The site on GitHub Pages stays static. Win/loss lives in D1 and is not wiped when the site or Worker is updated. If an online opponent disconnects for 2 minutes, the remaining player can kick them and take the win.
 - The platform still supports `status: 'wip'` / `'coming-soon'` manifests (greyed-out lobby cards) for future games.
 - Deployed to GitHub Pages with auto-deploy on push to `main`. The Worker deploys from the same workflow when Cloudflare secrets are set.
 - Unit tests for Close Circuit's rules (`npm test`), run in CI before every deploy.
@@ -36,7 +36,7 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 ## 2. User preferences and conventions
 
 - The user is **Mason**. They prefer working directly in code (creating, debugging, iterating).
-- They write to you in Chinese or English. **All code comments, docs and notes must be in English** (explicit request). UI strings are currently English too.
+- They write to you in Chinese or English. **All code comments, docs and notes must be in English** (explicit request). The UI is English or Traditional Chinese (`src/core/i18n.js`); a language switch sits in the top bar.
 - They are not a git or deployment expert. Prefer doing things for them. **Users of the product must be able to play by visiting a URL.** Never rely on `.bat` files or local servers for end users.
 - Keep explanations short and actionable.
 
@@ -75,6 +75,7 @@ src/
     transport.js            LocalTransport (pass-and-play) and WebSocketTransport (online)
     auth.js / api.js / hub.js  Client session, HTTP API, presence socket
     gameLoader.js           mountGame(): resolves id -> loads module -> builds session -> mounts view
+    i18n.js                 English / Traditional Chinese UI strings (top-bar language switch)
     registry.js             Auto-discovers games in src/games/ via import.meta.glob
     router.js               Hash router (#/games, #/join/CODE, #/room/CODE, #/account)
     dom.js                  el() hyperscript helper
@@ -155,6 +156,7 @@ Run from the project root (`c:\Users\mason\OneDrive\Desktop\Boardgames` on Mason
 - Pages is configured with **Source = GitHub Actions** (`build_type: workflow`). That was enabled once through the API. It does not need to be repeated.
 - To check a deploy: `gh run list --repo masonchern/boardgames --limit 3`, then `gh run watch <run-id> --repo masonchern/boardgames --exit-status`.
 - GitHub Pages only hosts static files. The **game server** is a Cloudflare Worker (`server/`), live at `https://boardgames-hub.masonchern.workers.dev`. CI deploys it when repo variable `WORKER_READY=1` and secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` are set. The site calls it via `VITE_API_URL` (baked in at build time). First-time setup is in `server/README.md`.
+- Accounts and W/L are in the D1 database `boardgames`. Re-applying `server/schema.sql` is additive (`CREATE TABLE IF NOT EXISTS` only). Never `DROP` those tables; a Worker deploy must not reset win/loss.
 
 ---
 

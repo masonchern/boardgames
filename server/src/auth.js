@@ -14,6 +14,31 @@ export const publicUser = (row) =>
     losses: row.losses ?? 0,
   };
 
+/** Wins/losses from finished counted matches (survives Worker deploys; heals users.wins if they drift). */
+export async function countedRecord(env, userId) {
+  const row = await env.DB.prepare(
+    `SELECT
+       COALESCE(SUM(CASE WHEN winner_id = ? THEN 1 ELSE 0 END), 0) AS wins,
+       COALESCE(SUM(CASE WHEN winner_id IS NOT NULL AND winner_id != ? THEN 1 ELSE 0 END), 0) AS losses
+     FROM matches
+     WHERE counted = 1 AND (p1_id = ? OR p2_id = ?)`,
+  )
+    .bind(userId, userId, userId, userId)
+    .first();
+  return { wins: Number(row?.wins ?? 0), losses: Number(row?.losses ?? 0) };
+}
+
+export async function syncUserRecord(env, user) {
+  if (!user || user.kind !== 'user') return user;
+  const rec = await countedRecord(env, user.id);
+  if (rec.wins !== (user.wins ?? 0) || rec.losses !== (user.losses ?? 0)) {
+    await env.DB.prepare('UPDATE users SET wins = ?, losses = ? WHERE id = ?').bind(rec.wins, rec.losses, user.id).run();
+  }
+  user.wins = rec.wins;
+  user.losses = rec.losses;
+  return user;
+}
+
 export async function hashPassword(password, saltBytes) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(

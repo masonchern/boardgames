@@ -1,15 +1,14 @@
 import { el } from '../../core/dom.js';
 import { navigate } from '../../core/router.js';
 import { manifests } from '../../core/registry.js';
-
-const STATUS_LABEL = {
-  playable: 'Play now',
-  wip: 'In development',
-  'coming-soon': 'Coming soon',
-};
+import { t, gameText } from '../../core/i18n.js';
 
 function gameCard(manifest) {
   const playable = manifest.status === 'playable';
+  const players =
+    manifest.players.min === manifest.players.max
+      ? t('players.count', { n: manifest.players.min })
+      : t('players.range', { min: manifest.players.min, max: manifest.players.max });
   return el(
     'button',
     {
@@ -21,21 +20,16 @@ function gameCard(manifest) {
     el(
       'div',
       { class: 'game-card__body' },
-      el('h3', {}, manifest.title),
-      manifest.subtitle && el('p', { class: 'game-card__subtitle' }, manifest.subtitle),
-      el('p', { class: 'game-card__desc' }, manifest.description),
+      el('h3', {}, gameText(manifest.id, 'title', manifest.title)),
+      manifest.subtitle &&
+        el('p', { class: 'game-card__subtitle' }, gameText(manifest.id, 'subtitle', manifest.subtitle)),
+      el('p', { class: 'game-card__desc' }, gameText(manifest.id, 'description', manifest.description)),
     ),
     el(
       'div',
       { class: 'game-card__footer' },
-      el(
-        'span',
-        { class: 'chip' },
-        manifest.players.min === manifest.players.max
-          ? `${manifest.players.min} players`
-          : `${manifest.players.min}–${manifest.players.max} players`,
-      ),
-      el('span', { class: `chip chip--${manifest.status}` }, STATUS_LABEL[manifest.status]),
+      el('span', { class: 'chip' }, players),
+      el('span', { class: `chip chip--${manifest.status}` }, t(`status.${manifest.status}`)),
     ),
   );
 }
@@ -47,9 +41,9 @@ export function renderLobby() {
     el(
       'header',
       { class: 'page__header' },
-      el('h1', {}, 'Games'),
-      el('p', {}, 'Play on this device, or start an online room and invite a friend.'),
-      el('button', { class: 'btn btn--ghost', onclick: () => navigate('join') }, 'Join a room'),
+      el('h1', {}, t('lobby.title')),
+      el('p', {}, t('lobby.blurb')),
+      el('button', { class: 'btn btn--ghost', onclick: () => navigate('join') }, t('lobby.join')),
     ),
     el('div', { class: 'card-grid' }, manifests.map(gameCard)),
   );

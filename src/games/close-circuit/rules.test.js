@@ -205,6 +205,16 @@ test('challenge rules: not on an empty board, not twice, conceding gives the win
   assert.equal(s.result.winnerId, 'p2');
 });
 
+test('forfeit awards the win to the other player even when it is not their turn', () => {
+  const s = newGame();
+  assert.equal(s.players[s.current].id, 'p1');
+  const lost = act(s, 'p2', { type: 'FORFEIT' });
+  assert.equal(lost.phase, 'over');
+  assert.equal(lost.result.winnerId, 'p1');
+  assert.equal(lost.result.reason, 'disconnected');
+  assert.equal(lost.wins.p1, 1);
+});
+
 test('timers: variable settings, and timeouts only count after the deadline', () => {
   const s = newGame({ turnSeconds: 10, challengeSeconds: 5 });
   assert.equal(s.deadline - T0, 10_000);

@@ -9,6 +9,7 @@ import {
   checkPassword,
   normalizeUsername,
   normalizeName,
+  syncUserRecord,
 } from './auth.js';
 import { getGame } from './games.js';
 import { Hub, hubStub, notifyUser, whoIsOnline } from './hub.js';
@@ -106,6 +107,7 @@ async function handle(request, env) {
 
   if (method === 'GET' && path === '/api/me') {
     const user = await requireUser(env, request);
+    await syncUserRecord(env, user);
     return json(request, { user: publicUser(user) });
   }
 

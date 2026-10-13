@@ -1,5 +1,6 @@
 import { buildInfo } from './buildInfo.js';
 import { el } from './dom.js';
+import { t } from './i18n.js';
 
 const CHECK_EVERY_MS = 5 * 60 * 1000;
 
@@ -32,7 +33,7 @@ export function startUpdateCheck() {
     banner = el(
       'div',
       { class: 'update-banner', role: 'status' },
-      el('span', {}, 'A newer version of the game is available.'),
+      el('span', {}, t('update.blurb')),
       el(
         'button',
         {
@@ -44,7 +45,7 @@ export function startUpdateCheck() {
             window.location.replace(url.toString());
           },
         },
-        'Update now',
+        t('update.now'),
       ),
     );
     document.body.append(banner);

@@ -2,6 +2,7 @@ import { el } from '../../core/dom.js';
 import { api } from '../../core/api.js';
 import { getMe, login, register, playAsGuest, logout, rename, loadMe } from '../../core/auth.js';
 import { navigate } from '../../core/router.js';
+import { t, te, gameText } from '../../core/i18n.js';
 
 export function renderAccount() {
   const root = el('section', { class: 'page' });
@@ -23,7 +24,7 @@ export function renderAccount() {
   function render() {
     const me = getMe();
     root.replaceChildren(
-      el('header', { class: 'page__header' }, el('h1', {}, 'Account'), el('p', {}, 'Profile, friends, and win record.')),
+      el('header', { class: 'page__header' }, el('h1', {}, t('account.title')), el('p', {}, t('account.blurb'))),
       me ? signedIn(me) : signedOut(),
     );
   }
@@ -31,10 +32,22 @@ export function renderAccount() {
   function signedOut() {
     const err = el('p', { class: 'account__msg is-error' });
     err.hidden = true;
-    const userIn = el('input', { type: 'text', name: 'username', autocomplete: 'username', placeholder: 'username', required: true });
-    const passIn = el('input', { type: 'password', name: 'password', autocomplete: 'current-password', placeholder: 'password', required: true });
-    const nameIn = el('input', { type: 'text', name: 'name', placeholder: 'Display name (optional)' });
-    const guestIn = el('input', { type: 'text', placeholder: 'Guest name', value: 'Guest' });
+    const userIn = el('input', {
+      type: 'text',
+      name: 'username',
+      autocomplete: 'username',
+      placeholder: t('account.placeholder.user'),
+      required: true,
+    });
+    const passIn = el('input', {
+      type: 'password',
+      name: 'password',
+      autocomplete: 'current-password',
+      placeholder: t('account.placeholder.pass'),
+      required: true,
+    });
+    const nameIn = el('input', { type: 'text', name: 'name', placeholder: t('account.placeholder.name') });
+    const guestIn = el('input', { type: 'text', placeholder: t('account.placeholder.guest'), value: t('account.guestDefault') });
 
     async function run(fn) {
       if (busy) return;
@@ -44,7 +57,7 @@ export function renderAccount() {
         await fn();
         render();
       } catch (e) {
-        err.textContent = e.message;
+        err.textContent = te(e.message);
         err.hidden = false;
       } finally {
         busy = false;
@@ -55,7 +68,7 @@ export function renderAccount() {
       'div',
       { class: 'panel' },
       err,
-      el('h3', {}, 'Sign in'),
+      el('h3', {}, t('account.signIn')),
       el(
         'form',
         {
@@ -67,10 +80,10 @@ export function renderAccount() {
         },
         userIn,
         passIn,
-        el('button', { class: 'btn', type: 'submit' }, 'Sign in'),
+        el('button', { class: 'btn', type: 'submit' }, t('account.signIn')),
       ),
-      el('h3', {}, 'Create account'),
-      el('p', { class: 'muted' }, 'Username and password. Wins and losses against other registered players are saved. No email needed.'),
+      el('h3', {}, t('account.create')),
+      el('p', { class: 'muted' }, t('account.create.blurb')),
       el(
         'form',
         {
@@ -87,36 +100,41 @@ export function renderAccount() {
           },
         },
         nameIn,
-        el('p', { class: 'muted' }, 'Uses the username and password fields above.'),
-        el('button', { class: 'btn', type: 'submit' }, 'Create account'),
+        el('p', { class: 'muted' }, t('account.create.usesFields')),
+        el('button', { class: 'btn', type: 'submit' }, t('account.create')),
       ),
-      el('h3', {}, 'Play as guest'),
-      el('p', { class: 'muted' }, 'No record is kept. You can still join rooms with a code.'),
+      el('h3', {}, t('account.guest')),
+      el('p', { class: 'muted' }, t('account.guest.blurb')),
       el(
         'form',
         {
           class: 'account__form',
           onsubmit: (e) => {
             e.preventDefault();
-            run(() => playAsGuest(guestIn.value || 'Guest'));
+            run(() => playAsGuest(guestIn.value || t('account.guestDefault')));
           },
         },
         guestIn,
-        el('button', { class: 'btn btn--ghost', type: 'submit' }, 'Continue as guest'),
+        el('button', { class: 'btn btn--ghost', type: 'submit' }, t('account.guestContinue')),
       ),
     );
   }
 
   function signedIn(me) {
-    const friendsBox = el('div', { class: 'friends' }, el('p', { class: 'muted' }, 'Loading friends…'));
-    const invitesBox = el('div', { class: 'friends' }, el('p', { class: 'muted' }, 'Loading invites…'));
+    const friendsBox = el('div', { class: 'friends' }, el('p', { class: 'muted' }, t('account.loadingFriends')));
+    const invitesBox = el('div', { class: 'friends' }, el('p', { class: 'muted' }, t('account.loadingInvites')));
     loadFriends(friendsBox);
     loadInvites(invitesBox);
     const letter = (me.name || '?').slice(0, 1).toUpperCase();
     const record =
       me.kind === 'user'
-        ? `${me.wins} win${me.wins === 1 ? '' : 's'} · ${me.losses} loss${me.losses === 1 ? '' : 'es'}`
-        : 'Guest · games are not recorded';
+        ? t('account.record', {
+            wins: me.wins,
+            losses: me.losses,
+            winsS: me.wins === 1 ? '' : 's',
+            lossesS: me.losses === 1 ? '' : 'es',
+          })
+        : t('account.guestRecord');
 
     return el(
       'div',
@@ -141,17 +159,17 @@ export function renderAccount() {
           {
             class: 'btn btn--ghost',
             onclick: async () => {
-              const name = prompt('Display name', me.name);
+              const name = prompt(t('account.renamePrompt'), me.name);
               if (!name) return;
               try {
                 await rename(name);
                 render();
               } catch (e) {
-                alert(e.message);
+                alert(te(e.message));
               }
             },
           },
-          'Rename',
+          t('account.rename'),
         ),
         el(
           'button',
@@ -162,14 +180,13 @@ export function renderAccount() {
               render();
             },
           },
-          'Sign out',
+          t('account.signOut'),
         ),
       ),
-      me.kind === 'guest' &&
-        el('p', { class: 'muted' }, 'Create an account (sign out first, then use Create account) if you want wins recorded and a friends list.'),
-      el('h3', {}, 'Friends'),
+      me.kind === 'guest' && el('p', { class: 'muted' }, t('account.guestHint')),
+      el('h3', {}, t('account.friends')),
       friendsBox,
-      me.kind === 'user' && el('h3', {}, 'Game invites'),
+      me.kind === 'user' && el('h3', {}, t('account.invites')),
       me.kind === 'user' && invitesBox,
     );
   }
@@ -177,12 +194,12 @@ export function renderAccount() {
   async function loadFriends(box) {
     const me = getMe();
     if (!me || me.kind !== 'user') {
-      box.replaceChildren(el('p', { class: 'muted' }, 'Friends are for registered accounts.'));
+      box.replaceChildren(el('p', { class: 'muted' }, t('account.friendsGuest')));
       return;
     }
     try {
       const data = await api('/api/friends');
-      const addIn = el('input', { type: 'text', placeholder: 'Add by username' });
+      const addIn = el('input', { type: 'text', placeholder: t('account.addUser') });
       box.replaceChildren(
         el(
           'form',
@@ -195,14 +212,14 @@ export function renderAccount() {
                 addIn.value = '';
                 loadFriends(box);
               } catch (err) {
-                alert(err.message);
+                alert(te(err.message));
               }
             },
           },
           addIn,
-          el('button', { class: 'btn', type: 'submit' }, 'Add friend'),
+          el('button', { class: 'btn', type: 'submit' }, t('account.addFriend')),
         ),
-        data.incoming.length ? el('h4', {}, 'Requests') : null,
+        data.incoming.length ? el('h4', {}, t('account.requests')) : null,
         ...data.incoming.map((r) =>
           el(
             'div',
@@ -211,13 +228,15 @@ export function renderAccount() {
             el(
               'span',
               { class: 'friend__actions' },
-              el('button', { class: 'btn', onclick: () => actFriend(r.id, 'accept', box) }, 'Accept'),
-              el('button', { class: 'btn btn--ghost', onclick: () => actFriend(r.id, 'decline', box) }, 'Decline'),
+              el('button', { class: 'btn', onclick: () => actFriend(r.id, 'accept', box) }, t('account.accept')),
+              el('button', { class: 'btn btn--ghost', onclick: () => actFriend(r.id, 'decline', box) }, t('account.decline')),
             ),
           ),
         ),
-        data.outgoing.length ? el('p', { class: 'muted' }, `Waiting on: ${data.outgoing.map((r) => r.user.username).join(', ')}`) : null,
-        data.friends.length ? el('h4', {}, 'Your friends') : el('p', { class: 'muted' }, 'No friends yet. Add someone by username.'),
+        data.outgoing.length
+          ? el('p', { class: 'muted' }, t('account.waitingOn', { names: data.outgoing.map((r) => r.user.username).join(', ') }))
+          : null,
+        data.friends.length ? el('h4', {}, t('account.yourFriends')) : el('p', { class: 'muted' }, t('account.noFriends')),
         ...data.friends.map((r) =>
           el(
             'div',
@@ -239,17 +258,17 @@ export function renderAccount() {
                     await api(`/api/rooms/${created.room.code}/invite`, { method: 'POST', body: { userId: r.user.id } });
                     navigate(`room/${created.room.code}`);
                   } catch (err) {
-                    alert(err.message);
+                    alert(te(err.message));
                   }
                 },
               },
-              'Invite to Close Circuit',
+              t('account.inviteCc'),
             ),
           ),
         ),
       );
     } catch (err) {
-      box.replaceChildren(banner(err.message, 'is-error'));
+      box.replaceChildren(banner(te(err.message), 'is-error'));
     }
   }
 
@@ -257,7 +276,7 @@ export function renderAccount() {
     try {
       const data = await api('/api/invites');
       if (!data.invites.length) {
-        box.replaceChildren(el('p', { class: 'muted' }, 'No pending invites.'));
+        box.replaceChildren(el('p', { class: 'muted' }, t('account.noInvites')));
         return;
       }
       box.replaceChildren(
@@ -265,7 +284,15 @@ export function renderAccount() {
           el(
             'div',
             { class: 'friend' },
-            el('span', {}, `${inv.from.name} invited you to ${inv.gameId === 'close-circuit' ? 'Close Circuit' : inv.gameId} · ${inv.roomCode}`),
+            el(
+              'span',
+              {},
+              t('account.inviteLine', {
+                name: inv.from.name,
+                game: gameText(inv.gameId, 'title', inv.gameId),
+                code: inv.roomCode,
+              }),
+            ),
             el(
               'span',
               { class: 'friend__actions' },
@@ -278,11 +305,11 @@ export function renderAccount() {
                       await api(`/api/invites/${inv.id}/accept`, { method: 'POST' });
                       navigate(`room/${inv.roomCode}`);
                     } catch (err) {
-                      alert(err.message);
+                      alert(te(err.message));
                     }
                   },
                 },
-                'Join',
+                t('toast.join'),
               ),
               el(
                 'button',
@@ -293,18 +320,18 @@ export function renderAccount() {
                       await api(`/api/invites/${inv.id}/decline`, { method: 'POST' });
                       loadInvites(box);
                     } catch (err) {
-                      alert(err.message);
+                      alert(te(err.message));
                     }
                   },
                 },
-                'Decline',
+                t('account.decline'),
               ),
             ),
           ),
         ),
       );
     } catch (err) {
-      box.replaceChildren(banner(err.message, 'is-error'));
+      box.replaceChildren(banner(te(err.message), 'is-error'));
     }
   }
 
@@ -313,7 +340,7 @@ export function renderAccount() {
       await api(`/api/friends/${id}/${action}`, { method: 'POST' });
       loadFriends(box);
     } catch (err) {
-      alert(err.message);
+      alert(te(err.message));
     }
   }
 

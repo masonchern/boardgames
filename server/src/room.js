@@ -2,6 +2,8 @@ import { getGame } from './games.js';
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const randomSeed = () => Math.floor(Math.random() * 2 ** 32);
+/** How long the remaining player must wait after a disconnect before they can claim the win. */
+export const DISCONNECT_WAIT_MS = 2 * 60 * 1000;
 
 export function newRoomCode() {
   let code = '';
@@ -20,6 +22,8 @@ function emptyMeta({ code, gameId, options, host }) {
     phase: 'lobby', // lobby | playing
     seq: 0,
     recorded: false,
+    gameOver: false,
+    away: null, // { userId, since } while a seated player has no live socket
   };
 }
 
@@ -99,6 +103,7 @@ export class Room {
       this.ctx.acceptWebSocket(server);
       server.serializeAttachment({ userId: user.id });
       this.ctx.waitUntil(this.hello(server, user.id));
+      this.ctx.waitUntil(this.markPresent(user.id));
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -114,7 +119,60 @@ export class Room {
       seats: meta.seats,
       phase: meta.phase,
       seq: meta.seq,
+      gameOver: Boolean(meta.gameOver),
+      away: meta.away
+        ? { userId: meta.away.userId, since: meta.away.since, waitMs: DISCONNECT_WAIT_MS }
+        : null,
     };
+  }
+
+  socketsFor(userId) {
+    return this.ctx.getWebSockets().filter((ws) => {
+      try {
+        return ws.deserializeAttachment()?.userId === userId;
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  async markPresent(userId) {
+    const meta = await this.ctx.storage.get('meta');
+    if (!meta?.away || meta.away.userId !== userId) return;
+    meta.away = null;
+    await this.ctx.storage.put('meta', meta);
+    await this.broadcastRoom(meta);
+  }
+
+  async markAway(userId) {
+    if (this.socketsFor(userId).length > 0) return;
+    const meta = await this.ctx.storage.get('meta');
+    if (!meta || meta.phase !== 'playing') return;
+    if (!meta.seats.some((s) => s.id === userId)) return;
+    const state = await this.ctx.storage.get('state');
+    if (!state || state.phase === 'over') return;
+    if (meta.away?.userId === userId) return;
+    meta.away = { userId, since: Date.now() };
+    await this.ctx.storage.put('meta', meta);
+    await this.broadcastRoom(meta);
+  }
+
+  async claimDisconnect(claimerId) {
+    const meta = await this.ctx.storage.get('meta');
+    const away = meta?.away;
+    if (!away) throw new Error('Nobody is disconnected');
+    if (away.userId === claimerId) throw new Error('You cannot claim a win for leaving');
+    if (!meta.seats.some((s) => s.id === claimerId)) throw new Error('You are not in this room');
+    if (this.socketsFor(away.userId).length > 0) throw new Error('They are back');
+    if (Date.now() < away.since + DISCONNECT_WAIT_MS) throw new Error('Wait until 2 minutes have passed');
+    const state = await this.ctx.storage.get('state');
+    if (!state || state.phase === 'over') throw new Error('The game is already over');
+    await this.apply(away.userId, { type: 'FORFEIT' });
+    const next = await this.ctx.storage.get('meta');
+    if (next) {
+      next.away = null;
+      await this.ctx.storage.put('meta', next);
+    }
   }
 
   async join(user) {
@@ -163,6 +221,8 @@ export class Room {
     meta.phase = 'playing';
     meta.seq = 0;
     meta.recorded = false;
+    meta.gameOver = false;
+    meta.away = null;
     await this.ctx.storage.put('meta', meta);
     await this.ctx.storage.put('state', state);
     return meta;
@@ -239,6 +299,16 @@ export class Room {
       return;
     }
 
+    if (msg.type === 'CLAIM_DISCONNECT') {
+      try {
+        await this.claimDisconnect(userId);
+        await this.broadcastAll();
+      } catch (err) {
+        this.sendError(ws, err.message);
+      }
+      return;
+    }
+
     if (msg.type === 'ACTION') {
       try {
         await this.apply(userId, msg.action);
@@ -259,6 +329,7 @@ export class Room {
     if (!verdict.ok) throw new Error(verdict.error || 'Invalid action');
     const next = rules.reduce(state, action, userId, metaStamp);
     meta.seq += 1;
+    meta.gameOver = next.phase === 'over';
     await this.ctx.storage.put('state', next);
     await this.ctx.storage.put('meta', meta);
     if (next.phase === 'over' && !meta.recorded) {
@@ -269,6 +340,7 @@ export class Room {
     // A new game in the series: allow a later result to be recorded again
     if (state.phase === 'over' && next.phase !== 'over') {
       meta.recorded = false;
+      meta.gameOver = false;
       await this.ctx.storage.put('meta', meta);
     }
   }
@@ -292,6 +364,16 @@ export class Room {
     }
   }
 
-  async webSocketClose() {}
-  async webSocketError() {}
+  async webSocketClose(ws) {
+    try {
+      const { userId } = ws.deserializeAttachment() || {};
+      if (userId) await this.markAway(userId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async webSocketError(ws) {
+    await this.webSocketClose(ws);
+  }
 }
