@@ -15,7 +15,8 @@
  *   out AND all cards form ONE single circuit (no separate loops), the circuit is closed and the
  *   player who just placed wins.
  * - CHALLENGE ("no solution"): instead of placing, the player whose turn it is may challenge.
- *   The opponent then gets 1-3 cards and (turn time + extra challenge time) to close the circuit.
+ *   The opponent then gets (turn time + extra challenge time) to close the circuit, and may use
+ *   ALL cards left in the deck, in any shape (the straight-line rule does not apply to them).
  *   Closed -> the challenged player wins. Otherwise (fails, concedes, times out) -> challenger wins.
  * - If the deck runs out without a closed circuit, the game is a draw.
  *
@@ -47,8 +48,8 @@
  *
  * ASSUMPTIONS (the spec was silent; easy to change here):
  * - Normal: the first card still goes in the center (the "no need to touch the board" rule
- *   applies after that); a challenged player follows the same placement rules (one straight
- *   line of 1-3 cards).
+ *   applies after that); a challenged player may place any number of cards (up to the cards
+ *   left in the deck) in any shape.
  * - Advanced: several separate loops count as closed, as long as nothing sticks out.
  * - A challenge or solve is only allowed once there is at least one card on the board.
  * - A player may resign (CONCEDE) at any time on their turn.
@@ -280,6 +281,8 @@ export function placementProblem(state, placed, item) {
   }
 
   // Normal mode: cards may go anywhere, but one turn's cards form a straight line of adjacent cells.
+  // A challenged player is exempt: they may build any shape with the cards left in the deck.
+  if (state.phase === 'challenge') return null;
   if (placed.length === 0) return null;
   const mine = placed.filter((p) => Number.isInteger(p.x) && Number.isInteger(p.y));
   if (mine.length === 0) return null;
@@ -304,7 +307,8 @@ function playProblem(state, playerId, items) {
   const fromPool = state.phase === 'challenge' || state.phase === 'solve';
 
   if (!advanced) {
-    const limit = Math.min(state.options.maxPerTurn, state.deckRemaining);
+    // A challenged player may use every card left in the deck; otherwise 1 to maxPerTurn.
+    const limit = state.phase === 'challenge' ? state.deckRemaining : Math.min(state.options.maxPerTurn, state.deckRemaining);
     if (items.length < 1) return 'Place at least 1 card';
     if (items.length > limit) return `You can place at most ${limit} card${limit === 1 ? '' : 's'}`;
     if (items.some((i) => !LINE_KINDS.includes(i.kind))) return 'Unknown card type';

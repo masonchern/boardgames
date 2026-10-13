@@ -75,10 +75,32 @@ test('one turn: the cards must be adjacent and in a straight line (no L shapes)'
   assert.equal(play([t(70, 70), t(71, 71)]).ok, false);
   assert.equal(play([t(70, 70), t(71, 70), t(71, 69)]).ok, false);
 
-  // the same rules apply to a challenged player
+  // a challenged player is exempt: any shape, any number of cards, up to the cards left in the deck
   const challenged = act(s, 'p2', { type: 'CHALLENGE' });
-  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: [t(70, 70), t(71, 70), t(71, 71)] }).ok, false);
-  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: [t(70, 70), t(71, 70)] }).ok, true);
+  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: [t(70, 70), t(71, 70), t(71, 71)] }).ok, true);
+  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: [t(70, 70), t(80, 80)] }).ok, true);
+  const many = Array.from({ length: challenged.deckRemaining }, (_, i) => t(60 + (i % 20), 70 + Math.floor(i / 20)));
+  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: many }).ok, true); // the whole deck
+  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: [...many, t(10, 10)] }).ok, false); // one too many
+  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: [t(50, 50)] }).ok, false); // still no overlapping
+});
+
+test('challenge (normal): the challenged player can build a loop with many cards and wins', () => {
+  // p1 plays 2 cards of a 2x3 rectangle; p2 challenges; p1 finishes the rest in an L-shaped, multi-card play
+  const rectangle = [
+    { x: 50, y: 50, kind: 'turn', rot: 1 },
+    { x: 51, y: 50, kind: 'straight', rot: 0 },
+    { x: 52, y: 50, kind: 'turn', rot: 2 },
+    { x: 50, y: 51, kind: 'turn', rot: 0 },
+    { x: 51, y: 51, kind: 'straight', rot: 0 },
+    { x: 52, y: 51, kind: 'turn', rot: 3 },
+  ];
+  let s = act(newGame(), 'p1', { type: 'PLAY', placements: rectangle.slice(0, 2) });
+  s = act(s, 'p2', { type: 'CHALLENGE' });
+  // 4 cards at once, in an L-shaped pattern: not allowed for a normal turn, fine when challenged
+  s = act(s, 'p1', { type: 'PLAY', placements: rectangle.slice(2) });
+  assert.equal(s.result.winnerId, 'p1');
+  assert.equal(s.result.reason, 'challenge-success');
 });
 
 test('one turn: 1 to 3 cards, chained placements allowed', () => {

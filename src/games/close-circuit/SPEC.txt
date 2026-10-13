@@ -60,4 +60,5 @@ UPDATE (Oct 2026): rule changes for NORMAL mode only (advanced mode is unchanged
 3. The cards placed in one turn must form a straight line of 1 to 3 cards (one row or one
    column). Any mix of straights and turns is fine (straight, turn, straight is OK), but an
    L shape (two cards in a row plus a third beside them) is not allowed.
-   A challenged player follows the same placement rules.
+4. A challenged player (both modes) may use ALL the cards left in the deck. In normal mode
+   they are also free of the straight-line rule: any number of cards, any shape, anywhere.
