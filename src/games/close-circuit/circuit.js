@@ -74,10 +74,33 @@ export function isClosed(board) {
   return Object.keys(board).length > 0 && openEnds(board).length === 0;
 }
 
+/** Do all cards on the board hang together through their connected ends (one single group)? */
+export function isOneGroup(board) {
+  const keys = Object.keys(board);
+  if (!keys.length) return false;
+  const seen = new Set([keys[0]]);
+  const queue = [board[keys[0]]];
+  while (queue.length) {
+    const piece = queue.pop();
+    for (const dir of pieceEnds(piece.kind, piece.rot)) {
+      const key = cellKey(piece.x + DX[dir], piece.y + DY[dir]);
+      const next = board[key];
+      if (next && !seen.has(key) && pieceEnds(next.kind, next.rot).includes(opposite(dir))) {
+        seen.add(key);
+        queue.push(next);
+      }
+    }
+  }
+  return seen.size === keys.length;
+}
+
 /**
- * The win condition. Today this is simply "closed circuit". An advanced mode could
- * require a single loop, a minimum size, etc., driven by `options`.
+ * The win condition, driven by the game mode.
+ * - Normal mode: ONE closed circuit that contains every card on the board (no loose ends and
+ *   no separate loops).
+ * - Advanced mode: no loose ends anywhere; separate loops all count as closed.
  */
-export function isWinningBoard(board, _options) {
-  return isClosed(board);
+export function isWinningBoard(board, options) {
+  if (!isClosed(board)) return false;
+  return options?.mode === 'advanced' ? true : isOneGroup(board);
 }

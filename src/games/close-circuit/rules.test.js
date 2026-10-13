@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { rules } from './rules.js';
-import { cellKey, isClosed } from './circuit.js';
+import { cellKey, isClosed, isWinningBoard, isOneGroup } from './circuit.js';
 
 const players = [
   { id: 'p1', name: 'Player 1' },
@@ -28,6 +28,10 @@ const SQUARE = [
   { x: 50, y: 51, kind: 'turn', rot: 0 }, // ends N,E
   { x: 51, y: 51, kind: 'turn', rot: 3 }, // ends W,N
 ];
+// The square is played as two straight rows over two turns (an L is not allowed in one turn).
+const TOP = SQUARE.slice(0, 2);
+const BOTTOM = SQUARE.slice(2, 4);
+const ROW3 = [50, 51, 52].map((x) => ({ x, y: 50, kind: 'straight', rot: 0 }));
 
 test('setup uses defaults: 48 cards, 100x100 grid, 30s + 30s', () => {
   const s = newGame();
@@ -39,24 +43,50 @@ test('setup uses defaults: 48 cards, 100x100 grid, 30s + 30s', () => {
   assert.equal(rules.getStatus(s).currentPlayerId, 'p1');
 });
 
-test('first card must be in the center; later cards must touch', () => {
+test('first card must be in the center; later cards may go anywhere', () => {
   const s = newGame();
   assert.equal(reject(s, 'p1', { type: 'PLAY', placements: [{ x: 10, y: 10, kind: 'straight', rot: 0 }] }).ok, false);
   const afterCenter = act(s, 'p1', { type: 'PLAY', placements: [{ x: 50, y: 50, kind: 'straight', rot: 0 }] });
   assert.ok(afterCenter.board[cellKey(50, 50)]);
   assert.equal(afterCenter.deckRemaining, 47);
 
-  // p2 tries to place a card that touches nothing
-  const bad = reject(afterCenter, 'p2', { type: 'PLAY', placements: [{ x: 60, y: 60, kind: 'turn', rot: 0 }] });
-  assert.equal(bad.ok, false);
+  // p2 places a card that touches nothing: allowed in normal mode
+  const far = act(afterCenter, 'p2', { type: 'PLAY', placements: [{ x: 60, y: 60, kind: 'turn', rot: 0 }] });
+  assert.ok(far.board[cellKey(60, 60)]);
+});
+
+test('one turn: the cards must be adjacent and in a straight line (no L shapes)', () => {
+  const s = act(newGame(), 'p1', { type: 'PLAY', placements: [{ x: 50, y: 50, kind: 'straight', rot: 0 }] });
+  const t = (x, y, kind = 'straight') => ({ x, y, kind, rot: 0 });
+  const play = (placements) => reject(s, 'p2', { type: 'PLAY', placements });
+
+  // anywhere on the board, as long as the turn's cards form one straight line
+  assert.equal(play([t(70, 70)]).ok, true);
+  assert.equal(play([t(70, 70), t(71, 70)]).ok, true);
+  assert.equal(play([t(70, 70), t(70, 71), t(70, 72)]).ok, true); // vertical
+  assert.equal(play([t(70, 70), t(71, 70, 'turn'), t(72, 70)]).ok, true); // line, turn, line
+  assert.equal(play([t(71, 70), t(70, 70), t(72, 70)]).ok, true); // any order that stays connected
+  assert.equal(play([t(70, 70), t(71, 70), t(69, 70)]).ok, true); // extend either end
+
+  // an L is not allowed, nor are gaps or diagonals
+  assert.equal(play([t(70, 70), t(71, 70), t(71, 71)]).ok, false);
+  assert.equal(play([t(70, 70), t(70, 71), t(71, 71)]).ok, false);
+  assert.equal(play([t(70, 70), t(72, 70)]).ok, false);
+  assert.equal(play([t(70, 70), t(71, 71)]).ok, false);
+  assert.equal(play([t(70, 70), t(71, 70), t(71, 69)]).ok, false);
+
+  // the same rules apply to a challenged player
+  const challenged = act(s, 'p2', { type: 'CHALLENGE' });
+  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: [t(70, 70), t(71, 70), t(71, 71)] }).ok, false);
+  assert.equal(reject(challenged, 'p1', { type: 'PLAY', placements: [t(70, 70), t(71, 70)] }).ok, true);
 });
 
 test('one turn: 1 to 3 cards, chained placements allowed', () => {
   const s = newGame();
-  const four = SQUARE.slice(0, 4);
+  const four = [50, 51, 52, 53].map((x) => ({ x, y: 50, kind: 'straight', rot: 0 }));
   assert.equal(reject(s, 'p1', { type: 'PLAY', placements: four }).ok, false); // too many
   assert.equal(reject(s, 'p1', { type: 'PLAY', placements: [] }).ok, false); // too few
-  const three = act(s, 'p1', { type: 'PLAY', placements: SQUARE.slice(0, 3) });
+  const three = act(s, 'p1', { type: 'PLAY', placements: ROW3 });
   assert.equal(three.deckRemaining, 45);
   assert.equal(rules.getStatus(three).currentPlayerId, 'p2');
 });
@@ -68,9 +98,9 @@ test('rejects overlapping cards and playing out of turn', () => {
 });
 
 test('closing a circuit wins the game and counts a win', () => {
-  let s = act(newGame(), 'p1', { type: 'PLAY', placements: SQUARE.slice(0, 3) });
+  let s = act(newGame(), 'p1', { type: 'PLAY', placements: TOP });
   assert.equal(s.phase, 'play');
-  s = act(s, 'p2', { type: 'PLAY', placements: [SQUARE[3]] });
+  s = act(s, 'p2', { type: 'PLAY', placements: BOTTOM });
   assert.equal(s.phase, 'over');
   assert.equal(s.result.winnerId, 'p2');
   assert.equal(s.result.reason, 'closed');
@@ -95,20 +125,41 @@ test('circuit detection: square and rectangle are closed, a line and an L are no
   assert.equal(isClosed({}), false);
   assert.equal(isClosed(toBoard([{ x: 50, y: 50, kind: 'straight', rot: 0 }])), false);
   assert.equal(isClosed(toBoard(SQUARE.slice(0, 3))), false);
+  assert.equal(isOneGroup(toBoard(SQUARE)), true);
   // right shape, wrong orientation: one corner points the wrong way
   const wrong = SQUARE.map((p, i) => (i === 3 ? { ...p, rot: 0 } : p));
   assert.equal(isClosed(toBoard(wrong)), false);
 });
 
+test('normal mode: the circuit must contain every card (separate loops or stray cards do not win)', () => {
+  const shift = (list, dx, dy) => list.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }));
+  const toBoard = (list) => Object.fromEntries(list.map((p) => [cellKey(p.x, p.y), p]));
+  const twoSquares = toBoard([...SQUARE, ...shift(SQUARE, 10, 10)]);
+  assert.equal(isClosed(twoSquares), true); // nothing sticks out...
+  assert.equal(isOneGroup(twoSquares), false); // ...but it is two loops
+  assert.equal(isWinningBoard(twoSquares, { mode: 'normal' }), false);
+  assert.equal(isWinningBoard(twoSquares, {}), false);
+  // advanced mode keeps its own rule: separate loops all count
+  assert.equal(isWinningBoard(twoSquares, { mode: 'advanced' }), true);
+  assert.equal(isWinningBoard(toBoard(SQUARE), { mode: 'normal' }), true);
+
+  // In play: a closed square next to a stray card with open ends does not end the game
+  let s = act(newGame(), 'p1', { type: 'PLAY', placements: [{ x: 50, y: 50, kind: 'straight', rot: 0 }] });
+  s = act(s, 'p2', { type: 'PLAY', placements: shift(TOP, 10, 10) });
+  s = act(s, 'p1', { type: 'PLAY', placements: shift(BOTTOM, 10, 10) });
+  assert.equal(s.phase, 'play');
+  assert.equal(s.result, null);
+});
+
 test('challenge: challenged player closes the circuit and wins', () => {
-  let s = act(newGame(), 'p1', { type: 'PLAY', placements: SQUARE.slice(0, 3) });
+  let s = act(newGame(), 'p1', { type: 'PLAY', placements: TOP });
   s = act(s, 'p2', { type: 'CHALLENGE' });
   assert.equal(s.phase, 'challenge');
   assert.equal(rules.getStatus(s).currentPlayerId, 'p1'); // p1 is the one being challenged
   // challenged player gets x + y seconds
   assert.equal(s.deadline - s.turnStartedAt, (30 + 30) * 1000);
 
-  s = act(s, 'p1', { type: 'PLAY', placements: [SQUARE[3]] });
+  s = act(s, 'p1', { type: 'PLAY', placements: BOTTOM });
   assert.equal(s.result.winnerId, 'p1');
   assert.equal(s.result.reason, 'challenge-success');
 });
@@ -182,8 +233,8 @@ test('missing or invalid time settings fall back to the 30 second defaults', () 
 });
 
 test('next game: starter alternates and wins carry over', () => {
-  let s = act(newGame(), 'p1', { type: 'PLAY', placements: SQUARE.slice(0, 3) });
-  s = act(s, 'p2', { type: 'PLAY', placements: [SQUARE[3]] });
+  let s = act(newGame(), 'p1', { type: 'PLAY', placements: TOP });
+  s = act(s, 'p2', { type: 'PLAY', placements: BOTTOM });
   assert.equal(reject(newGame(), 'p1', { type: 'NEXT_GAME' }).ok, false); // only after a game ends
 
   const next = act(s, 'p1', { type: 'NEXT_GAME' });
@@ -197,7 +248,7 @@ test('next game: starter alternates and wins carry over', () => {
 
 test('empty deck without a closed circuit is a draw', () => {
   const s = newGame({ deckSize: 3 });
-  const done = act(s, 'p1', { type: 'PLAY', placements: SQUARE.slice(0, 3) });
+  const done = act(s, 'p1', { type: 'PLAY', placements: ROW3 });
   assert.equal(done.phase, 'over');
   assert.equal(done.result.winnerId, null);
   assert.equal(done.result.reason, 'deck-empty');
@@ -207,6 +258,6 @@ test('empty deck without a closed circuit is a draw', () => {
 test('reduce never mutates the previous state', () => {
   const s = newGame();
   const snapshot = JSON.stringify(s);
-  act(s, 'p1', { type: 'PLAY', placements: SQUARE.slice(0, 3) });
+  act(s, 'p1', { type: 'PLAY', placements: ROW3 });
   assert.equal(JSON.stringify(s), snapshot);
 });

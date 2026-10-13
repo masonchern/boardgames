@@ -49,3 +49,15 @@ complete close loop is defined as every single piece can connect back to itself,
 let me know if you have any question
 
 let's build the game first with your UI, i will enhance the UI once you have it built
+----------------------------------------------------------------------
+UPDATE (Oct 2026): rule changes for NORMAL mode only (advanced mode is unchanged)
+
+1. A valid closed circuit must contain every single card on the board. Several separate
+   loops, or a loop plus stray cards, do not win.
+2. Cards no longer have to be placed next to existing cards (the very first card of the game
+   still goes in the center). But all the cards you place in ONE turn must be adjacent to
+   each other.
+3. The cards placed in one turn must form a straight line of 1 to 3 cards (one row or one
+   column). Any mix of straights and turns is fine (straight, turn, straight is OK), but an
+   L shape (two cards in a row plus a third beside them) is not allowed.
+   A challenged player follows the same placement rules.

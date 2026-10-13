@@ -7,10 +7,13 @@
  *
  * ============================== NORMAL MODE ==============================
  * - 2 players share one deck of 48 cards. Each card is placed as a straight or a 90-degree turn.
- * - On your turn you place 1 to 3 cards. The very first card of a game goes in the center cell;
- *   every other card must touch (share an edge with) a card already on the board.
+ * - On your turn you place 1 to 3 cards. The very first card of a game goes in the center cell.
+ *   After that cards may go ANYWHERE (they need not touch the board), but the cards placed in one
+ *   turn must be adjacent to each other and form a straight line (1 to 3 cards in one row or
+ *   one column, in any mix of straights and turns). An L shape is not allowed.
  * - After a placement, if every line end on the board connects to another, nothing sticks
- *   out, the circuit is closed and the player who just placed wins.
+ *   out AND all cards form ONE single circuit (no separate loops), the circuit is closed and the
+ *   player who just placed wins.
  * - CHALLENGE ("no solution"): instead of placing, the player whose turn it is may challenge.
  *   The opponent then gets 1-3 cards and (turn time + extra challenge time) to close the circuit.
  *   Closed -> the challenged player wins. Otherwise (fails, concedes, times out) -> challenger wins.
@@ -21,7 +24,9 @@
  *   cards (4 "limit", 4 "cross"). Each player holds 5 cards; after playing, you draw back up
  *   to 5 (until the deck runs out). Cards in hand have a fixed type; rotation is free.
  * - A turn: play 1-3 cards from your hand (function cards count toward the 3), at least one of
- *   them a straight or turn. Placement rules are the same as in normal mode.
+ *   them a straight or turn. Placement: the first card goes in the center, every other card must
+ *   touch a card already on the board (including one placed earlier in the same turn), and
+ *   several separate loops all count as closed.
  * - LIMIT: the opponent must play exactly 3 straight/turn cards on their next turn (or all the
  *   straight/turn cards in their hand if they hold fewer than 3).
  * - CROSS: turns one straight card on the board (any owner) into an intersection (+) with four
@@ -41,7 +46,10 @@
  * - The starter alternates every game, and wins are tracked across games.
  *
  * ASSUMPTIONS (the spec was silent; easy to change here):
- * - Several separate loops count as closed, as long as nothing sticks out.
+ * - Normal: the first card still goes in the center (the "no need to touch the board" rule
+ *   applies after that); a challenged player follows the same placement rules (one straight
+ *   line of 1-3 cards).
+ * - Advanced: several separate loops count as closed, as long as nothing sticks out.
  * - A challenge or solve is only allowed once there is at least one card on the board.
  * - A player may resign (CONCEDE) at any time on their turn.
  * - Advanced: a challenged/solving player may place any number of pool cards (no 1-3 cap).
@@ -266,8 +274,27 @@ export function placementProblem(state, placed, item) {
     return x === c && y === c ? null : 'The first card must go in the center cell';
   }
 
-  const touches = [0, 1, 2, 3].some((d) => board[cellKey(x + DX[d], y + DY[d])]);
-  return touches ? null : 'Cards must touch a card that is already on the board';
+  if (mode === 'advanced') {
+    const touches = [0, 1, 2, 3].some((d) => board[cellKey(x + DX[d], y + DY[d])]);
+    return touches ? null : 'Cards must touch a card that is already on the board';
+  }
+
+  // Normal mode: cards may go anywhere, but one turn's cards form a straight line of adjacent cells.
+  if (placed.length === 0) return null;
+  const mine = placed.filter((p) => Number.isInteger(p.x) && Number.isInteger(p.y));
+  if (mine.length === 0) return null;
+  if (mine.length === 1) {
+    const [first] = mine;
+    return Math.abs(first.x - x) + Math.abs(first.y - y) === 1 ? null : 'This turn\'s cards must be next to each other';
+  }
+  // Two or more cards already fix a row or a column; the new one must extend that line.
+  const horizontal = mine.every((p) => p.y === mine[0].y);
+  const lineCells = mine.map((p) => (horizontal ? p.x : p.y));
+  const pos = horizontal ? x : y;
+  if ((horizontal ? y : x) !== (horizontal ? mine[0].y : mine[0].x)) return 'This turn\'s cards must form a straight line (no L shapes)';
+  return pos === Math.min(...lineCells) - 1 || pos === Math.max(...lineCells) + 1
+    ? null
+    : 'This turn\'s cards must be next to each other in a straight line';
 }
 
 /** Validate a whole turn (card counts, hand contents, limit, then each placement in order). */

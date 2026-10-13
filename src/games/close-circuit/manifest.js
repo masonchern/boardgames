@@ -22,7 +22,7 @@ export default {
         {
           value: 'normal',
           label: 'Normal',
-          description: 'One shared deck of 48 cards. Place straights and turns as you like.',
+          description: 'One shared deck of 48 cards. Place 1-3 cards in a straight line each turn, anywhere. One single circuit wins.',
         },
         {
           value: 'advanced',

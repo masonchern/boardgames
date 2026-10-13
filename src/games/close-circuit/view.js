@@ -207,9 +207,9 @@ export function mount(container, api) {
         ]
       : [
           'Both players share one deck of 48 line cards. Each card can be placed as a straight line or a 90° turn.',
-          'On your turn place 1 to 3 cards. The very first card goes in the center; every other card must touch a card already on the board. Then press End turn.',
-          'Close the circuit to win: every line end on the board must connect to another, with nothing sticking out. A square or rectangle works, a single line does not.',
-          'Instead of placing cards you can challenge with "No solution!". The other player then gets extra time and 1 to 3 cards to close the circuit. If they manage it they win, otherwise you do.',
+          'On your turn place 1 to 3 cards. The very first card goes in the center. After that cards can go anywhere, they do not have to touch the board. But the cards you place in one turn must be next to each other in a straight line (any mix of straights and turns). An L shape is not allowed. Then press End turn.',
+          'Close the circuit to win: every line end on the board must connect to another, with nothing sticking out, and every card on the board must belong to the same single circuit. A square or rectangle works; a single line, or two separate loops, does not.',
+          'Instead of placing cards you can challenge with "No solution!". The other player then gets extra time and 1 to 3 cards (in a straight line, like any turn) to close the circuit. If they manage it they win, otherwise you do.',
           'When the deck runs out the game is a draw unless the circuit is closed.',
           'Run out of time and you lose the game. Player 1 starts the first game, player 2 the next, and so on.',
         ];
@@ -832,7 +832,9 @@ export function mount(container, api) {
     } else if (state.phase === 'challenge') {
       hint.textContent = 'Place cards so that every line end is connected, then submit.';
     } else {
-      hint.textContent = 'Tap a cell next to existing cards to place a card.';
+      hint.textContent = draft.length
+        ? 'Add cards next to this turn\'s cards, in one straight line (up to 3).'
+        : 'Tap any empty cell to place a card. Cards in one turn must form a straight line.';
     }
   }
 
