@@ -29,8 +29,26 @@ function version() {
   }
 }
 
+/**
+ * Writes dist/version.json ({ commit, version }). Open pages fetch it (never cached) and offer an
+ * update when it differs from the build they are running (see src/core/updateCheck.js).
+ */
+function versionFile() {
+  return {
+    name: 'version-file',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ commit: commit(), version: version() }),
+      });
+    },
+  };
+}
+
 // `npm run build` -> static site in dist/ (this is what CI deploys to GitHub Pages).
 export default defineConfig(({ command }) => ({
+  plugins: [versionFile()],
   // Relative asset paths so the site works at a domain root (example.com/)
   // or under a sub-path (user.github.io/boardgames/).
   base: './',

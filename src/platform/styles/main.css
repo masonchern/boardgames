@@ -294,6 +294,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .field__nolimit { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font-size: 0.9rem; white-space: nowrap; cursor: pointer; }
 .field__input { flex-wrap: wrap; justify-content: flex-end; }
 
+/* "A newer version is available" bar (see src/core/updateCheck.js) */
+.update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  padding: 10px 14px;
+  border: 1px solid #e0a458;
+  border-radius: 14px;
+  background: #fff1d6;
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 8px 22px rgba(80, 50, 20, 0.28);
+}
+
 /* Select option on the setup screen: big radio-style buttons */
 .field--choices { flex-direction: column; align-items: stretch; }
 .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

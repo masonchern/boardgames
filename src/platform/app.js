@@ -1,5 +1,6 @@
 import { el } from '../core/dom.js';
 import { buildLabel } from '../core/buildInfo.js';
+import { startUpdateCheck } from '../core/updateCheck.js';
 import { navigate, startRouter } from '../core/router.js';
 import { renderLobby } from './pages/lobby.js';
 import { renderGamePage } from './pages/gamePage.js';
@@ -42,6 +43,7 @@ export function createApp(root) {
 
   const shell = el('div', { class: 'shell' }, sidebar, content);
   root.append(shell);
+  startUpdateCheck(); // offers an update when this page is an old cached build
 
   let teardown = null;
 
