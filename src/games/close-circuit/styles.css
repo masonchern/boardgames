@@ -157,6 +157,8 @@
 .cc__hface svg { width: 38px; height: 38px; }
 .cc__hname { font-size: 0.72rem; font-weight: 800; }
 
+.cc__help { max-width: 460px; padding: 8px 12px; border: 1px solid #e6a300; border-radius: 12px; background: #fff4cc; text-align: center; font-size: 0.88rem; line-height: 1.4; }
+
 .cc__left { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--primary); }
 .cc__kind:disabled { opacity: 0.4; cursor: not-allowed; }
 .cc__poolnote { flex-basis: 100%; text-align: center; }

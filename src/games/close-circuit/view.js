@@ -9,9 +9,12 @@ const CARD_INFO = {
   turn: { name: 'Turn', tip: '90° turn' },
   cross: {
     name: 'Cross',
-    tip: 'Cross: turn a straight line that is already on the board into an intersection (+). All four sides must connect.',
+    tip: 'Turns a straight line that is already on the board into an intersection (+); all four sides of it must connect. Tap this card, then tap a straight line on the board.',
   },
-  limit: { name: 'Limit', tip: 'Limit: your opponent must play 3 cards next turn (or all they have if fewer).' },
+  limit: {
+    name: 'Limit',
+    tip: 'Your opponent must play 3 straight/turn cards on their next turn, or all of them if they hold fewer than 3. Tap it to use it this turn, tap again to take it back.',
+  },
 };
 const HAND_ORDER = ['straight', 'turn', 'cross', 'limit'];
 const isLineType = (type) => type === 'straight' || type === 'turn';
@@ -155,7 +158,17 @@ export function mount(container, api) {
   // Your hand (advanced). Rebuilt on every refresh.
   const handLabel = el('span', { class: 'cc__hlabel' });
   const handCards = el('div', { class: 'cc__hand' });
-  const handPanel = el('div', { class: 'cc__handpanel' }, handLabel, handCards);
+  // Explains a function card. Shown while hovering it (mouse) and after tapping it (phones can't hover).
+  const handHelp = el('div', { class: 'cc__help' });
+  handHelp.hidden = true;
+  let pinnedHelp = null; // function card type last tapped
+  let hoverHelp = null; // function card type under the mouse
+  function renderHelp() {
+    const type = hoverHelp ?? pinnedHelp;
+    handHelp.hidden = !type;
+    if (type) handHelp.replaceChildren(el('b', {}, `${CARD_INFO[type].name}: `), CARD_INFO[type].tip);
+  }
+  const handPanel = el('div', { class: 'cc__handpanel' }, handLabel, handCards, handHelp);
   handPanel.hidden = true;
   const rotateBtn = el('button', { class: 'btn btn--ghost', title: 'Rotate (R or right-click)', onclick: rotate }, '⟳ Rotate');
   const countEl = el('div', { class: 'cc__count muted' });
@@ -197,7 +210,7 @@ export function mount(container, api) {
       ? [
           'Advanced mode: the deck has 48 straight and 24 turn cards plus 4 Limit and 4 Cross function cards, shuffled. Each player holds 5 cards and refills to 5 after every turn until the deck runs out.',
           'On your turn play 1 to 3 cards from your hand (function cards count too, and at least one must be a straight or turn). Tap a card, then tap a cell next to the board. The first card goes in the center. Then press End turn.',
-          'Limit: your opponent must play 3 straight/turn cards next turn (or all they have if fewer). Cross: turns a straight line already on the board into an intersection (+); all four sides must connect.',
+          'Limit: your opponent must play 3 straight/turn cards next turn (or all they have if fewer). Cross: turns a straight line already on the board into an intersection (+); all four sides must connect. Hover over or tap a function card to see what it does.',
           'The card backs above the board show how many cards the other player holds. Function cards have a gift-box back, so you can see how many they have, but not which.',
           'If your hand has no straight or turn card, it is shuffled back and you draw 5 again.',
           'Close the circuit to win: every line end must connect, nothing sticking out. Instead of playing you can say "No solution!". The other player then sees the cards left in the deck and may pick any of them to close the circuit. If they do they win, otherwise you do.',
@@ -328,6 +341,8 @@ export function mount(container, api) {
 
   /** Advanced: tap a hand card. Line and cross cards get selected, a Limit card is toggled on or off. */
   function pickCard(card) {
+    // Tapping a function card explains it; tapping a line card clears the explanation
+    pinnedHelp = isLineType(card.type) ? null : card.type;
     if (card.type === 'limit') {
       const at = draft.findIndex((d) => d.cardId === card.id);
       if (at >= 0) draft.splice(at, 1);
@@ -772,6 +787,17 @@ export function mount(container, api) {
         // A used Limit card can still be tapped to take it back
         disabled: used && card.type !== 'limit',
         onclick: () => pickCard(card),
+        // Mouse hover shows what a function card does (touch has no hover, tapping does the same)
+        onpointerenter: (e) => {
+          if (e.pointerType === 'mouse' && !isLineType(card.type)) {
+            hoverHelp = card.type;
+            renderHelp();
+          }
+        },
+        onpointerleave: () => {
+          hoverHelp = null;
+          renderHelp();
+        },
       },
       el('span', { class: 'cc__hface', html: face }),
       el('span', { class: 'cc__hname' }, CARD_INFO[card.type].name),
@@ -794,6 +820,8 @@ export function mount(container, api) {
     if (!handPlay) return;
     const hand = state.hands[ownerId];
     if (handCovered()) {
+      pinnedHelp = hoverHelp = null;
+      renderHelp();
       handLabel.textContent = `Pass the device to ${nameOf(ownerId)}`;
       handCards.replaceChildren(
         ...backsOf(hand),
@@ -810,6 +838,7 @@ export function mount(container, api) {
     handLabel.textContent = `${nameOf(ownerId)}'s hand`;
     const sorted = [...hand].sort((a, b) => HAND_ORDER.indexOf(a.type) - HAND_ORDER.indexOf(b.type));
     handCards.replaceChildren(...sorted.map(handCard));
+    renderHelp();
   }
 
   /** Default hint line, including a live "this closes the circuit" check for the current draft. */
@@ -1011,6 +1040,7 @@ export function mount(container, api) {
       } else if (turnKey() !== `${previous.gameNumber}:${previous.turnNumber}:${previous.phase}`) {
         draft = [];
         selectedCardId = null;
+        pinnedHelp = null;
       }
       challengeBtn.disarm();
       solveBtn.disarm();
