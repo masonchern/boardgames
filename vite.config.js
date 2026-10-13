@@ -59,5 +59,6 @@ export default defineConfig(({ command }) => ({
     __BUILD_COMMIT__: JSON.stringify(commit()),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     __BUILD_KIND__: JSON.stringify(command === 'serve' ? 'dev' : 'live'),
+    __API_URL__: JSON.stringify(process.env.VITE_API_URL || 'http://localhost:8787'),
   },
 }));

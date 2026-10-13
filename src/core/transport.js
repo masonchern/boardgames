@@ -7,7 +7,7 @@
  *   close()
  *
  * Today:  LocalTransport (this device acts as the "server", for Pass-and-Play)
- * Future: WebSocketTransport (send -> ws.send, ws.onmessage -> onState)
+ *         WebSocketTransport (online rooms: send -> ws.send, ws.onmessage -> onState)
  *         Session and game code need no changes.
  */
 
@@ -63,14 +63,79 @@ export class LocalTransport {
 }
 
 /**
- * Sketch of the future online transport (not implemented, interface demo only).
- *
- * export class WebSocketTransport {
- *   constructor(url, roomId, token) {...}
- *   connect(handlers) { this.ws = new WebSocket(url); this.ws.onmessage = e => {
- *       const m = JSON.parse(e.data); if (m.type === 'STATE') handlers.onState(m.state, m.seq);
- *   }; }
- *   send(msg) { this.ws.send(JSON.stringify({ type: 'ACTION', ...msg })); }
- *   close() { this.ws.close(); }
- * }
+ * Online transport: actions go to the room Durable Object, redacted state comes back.
+ * The server ignores the client-supplied playerId and uses the session instead.
  */
+export class WebSocketTransport {
+  /**
+   * @param {string} url  Already includes the session token as `?token=`
+   */
+  constructor(url) {
+    this.url = url;
+    this.ws = null;
+    this.handlers = null;
+    this.closed = false;
+    this.roomListeners = new Set();
+    this.lastState = null;
+    this.lastRoom = null;
+    this.queue = [];
+  }
+
+  connect(handlers) {
+    this.handlers = handlers;
+    if (this.lastState) handlers?.onState(this.lastState.state, this.lastState.seq);
+    if (this.lastRoom) this.roomListeners.forEach((fn) => fn(this.lastRoom));
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
+    this.ws = new WebSocket(this.url);
+    this.ws.onopen = () => {
+      for (const payload of this.queue) this.ws.send(payload);
+      this.queue = [];
+    };
+    this.ws.onmessage = (e) => {
+      let msg;
+      try {
+        msg = JSON.parse(e.data);
+      } catch {
+        return;
+      }
+      if (msg.type === 'STATE') {
+        this.lastState = { state: msg.state, seq: msg.seq };
+        this.handlers?.onState(msg.state, msg.seq);
+      } else if (msg.type === 'ERROR') this.handlers?.onError(new Error(msg.error || 'Server rejected the action'));
+      else if (msg.type === 'ROOM') {
+        this.lastRoom = msg.room;
+        this.roomListeners.forEach((fn) => fn(msg.room));
+      }
+    };
+    this.ws.onclose = () => {
+      if (!this.closed) this.handlers?.onError(new Error('Disconnected from the room'));
+    };
+  }
+
+  onRoom(fn) {
+    this.roomListeners.add(fn);
+    return () => this.roomListeners.delete(fn);
+  }
+
+  send({ action, type = 'ACTION' }) {
+    const payload = JSON.stringify(type === 'START' ? { type: 'START' } : { type: 'ACTION', action });
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(payload);
+    else this.queue.push(payload);
+  }
+
+  startGame() {
+    this.send({ type: 'START' });
+  }
+
+  close() {
+    this.closed = true;
+    this.handlers = null;
+    this.roomListeners.clear();
+    try {
+      this.ws?.close();
+    } catch {
+      /* ignore */
+    }
+    this.ws = null;
+  }
+}

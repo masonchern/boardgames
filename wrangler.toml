@@ -1,0 +1,27 @@
+# Cloudflare Worker: the online referee (accounts, rooms, live games).
+# Lives at the repo root so the Worker can import game rules from src/games/.
+# Deploy: npm run deploy:server  (after `npx wrangler login`)
+name = "boardgames-hub"
+main = "server/src/index.js"
+compatibility_date = "2025-10-01"
+
+[vars]
+# Used only as a fallback Allow-Origin. Real CORS mirrors the request Origin when it is allowed.
+FRONTEND_ORIGIN = "https://masonchern.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "boardgames"
+database_id = "442e0c25-e949-49fb-a15b-fd07dce7b54a"
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub", "Room"]

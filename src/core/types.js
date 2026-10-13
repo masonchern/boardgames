@@ -66,7 +66,8 @@
  * That keeps rules deterministic, and lets a server enforce time limits and own the shuffle.
  *
  * Hidden information (e.g. hands): the authoritative state contains everything. A client
- * must only show what its player may see. Online play will need per-player state redaction.
+ * must only show what its player may see. Online play: export `redact(state, playerId)`; the
+ * Worker sends each client that subset.
  *
  * @typedef {Object} GameRules
  * @property {(ctx:{players:Player[], options?:Object, now:number, seed?:number}) => any} setup
@@ -76,6 +77,8 @@
  * @property {(state:any, action:any, playerId:string, meta?:{now:number, seed?:number}) => any} reduce
  *     Apply the action and return a NEW state (never mutate the input).
  * @property {(state:any) => GameStatus} getStatus
+ * @property {(state:any, playerId:string) => any} [redact]
+ *     Online play: the subset of state this player may see (e.g. hide the opponent's hand).
  */
 
 /**

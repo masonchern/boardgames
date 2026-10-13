@@ -48,7 +48,8 @@ export function renderLobby() {
       'header',
       { class: 'page__header' },
       el('h1', {}, 'Games'),
-      el('p', {}, 'Pick a game and pass the device around. Online play is coming later.'),
+      el('p', {}, 'Play on this device, or start an online room and invite a friend.'),
+      el('button', { class: 'btn btn--ghost', onclick: () => navigate('join') }, 'Join a room'),
     ),
     el('div', { class: 'card-grid' }, manifests.map(gameCard)),
   );

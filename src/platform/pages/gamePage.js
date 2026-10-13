@@ -3,6 +3,8 @@ import { navigate } from '../../core/router.js';
 import { getManifest } from '../../core/registry.js';
 import { mountGame } from '../../core/gameLoader.js';
 import { renderGameSetup } from './gameSetup.js';
+import { api } from '../../core/api.js';
+import { ensureSession } from '../../core/auth.js';
 
 /**
  * Hosts a game. Returns { node, destroy } so the shell can clean up on navigation.
@@ -64,8 +66,23 @@ export function renderGamePage(gameId) {
       });
   }
 
-  if (manifest.options?.length) stage.append(renderGameSetup(manifest, launch));
-  else launch({});
+  async function openOnline(options) {
+    try {
+      await ensureSession();
+      const data = await api('/api/rooms', { method: 'POST', body: { gameId, options } });
+      navigate(`room/${data.room.code}`);
+    } catch (err) {
+      stage.replaceChildren(placeholder('⚠️', 'Could not create a room', err.message));
+    }
+  }
+
+  if (manifest.options?.length) {
+    stage.append(renderGameSetup(manifest, { onLocal: launch, onOnline: openOnline }));
+  } else {
+    stage.append(
+      renderGameSetup({ ...manifest, options: [] }, { onLocal: () => launch({}), onOnline: () => openOnline({}) }),
+    );
+  }
 
   return {
     node,

@@ -1,6 +1,7 @@
 name: Deploy to GitHub Pages
 
 # Every push to main builds the site and publishes it to GitHub Pages.
+# The same workflow deploys the Cloudflare Worker when the account secrets exist.
 on:
   push:
     branches: [main]
@@ -29,6 +30,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # Baked into the JS bundle. Override with repo variable VITE_API_URL after the first Worker deploy if the URL differs.
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://boardgames-hub.masonchern.workers.dev' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -42,3 +46,28 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  worker:
+    runs-on: ubuntu-latest
+    # Set repo variable WORKER_READY=1 after the first `npx wrangler login` + deploy, plus
+    # GitHub secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (see server/README.md).
+    if: github.event_name == 'push' && vars.WORKER_READY == '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply D1 schema
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute boardgames --remote --file=server/schema.sql
+      - name: Deploy Cloudflare Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

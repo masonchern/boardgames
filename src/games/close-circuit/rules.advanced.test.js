@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rules, ADVANCED, poolCounts, limitRequirement } from './rules.js';
+import { rules, ADVANCED, poolCounts, limitRequirement, redact } from './rules.js';
 import { cellKey, isClosed, openEnds } from './circuit.js';
 
 const players = [
@@ -362,6 +362,20 @@ test('next game reshuffles with the new seed and swaps the starter', () => {
   assert.equal(rules.getStatus(a).currentPlayerId, 'p2');
   assert.notEqual(JSON.stringify(a.hands), JSON.stringify(b.hands));
   assert.deepEqual(a.board, {});
+});
+
+test('redact hides the opponent hand and the draw deck from the other player', () => {
+  const s = newGame(3);
+  const forP1 = redact(s, 'p1');
+  assert.deepEqual(forP1.hands.p1, s.hands.p1);
+  assert.equal(forP1.hands.p2.length, s.hands.p2.length);
+  assert.ok(forP1.hands.p2.every((c) => c.back === 'line' || c.back === 'fn'));
+  assert.ok(!forP1.hands.p2.some((c) => c.type));
+  assert.deepEqual(forP1.deck, []);
+  assert.equal(forP1.deckRemaining, s.deckRemaining);
+  // Normal mode is unchanged
+  const normal = rules.setup({ players, options: {}, now: T0, seed: 1 });
+  assert.equal(redact(normal, 'p1'), normal);
 });
 
 test('advanced reduce never mutates the previous state and is deterministic', () => {

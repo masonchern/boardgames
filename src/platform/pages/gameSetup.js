@@ -10,12 +10,16 @@ import { el } from '../../core/dom.js';
  * - `select`: pick one of `choices` (large option buttons). Yields the chosen `value`.
  *
  * @param {import('../../core/types.js').GameManifest} manifest
- * @param {(values: Record<string, number|string|null>) => void} onStart
+ * @param {{ onLocal: Function, onOnline?: Function } | Function} handlers
+ *     A function is treated as onLocal (older call sites). Pass `{ onLocal, onOnline }`
+ *     to offer both pass-and-play and a hosted online room.
  */
-export function renderGameSetup(manifest, onStart) {
+export function renderGameSetup(manifest, handlers) {
+  const onLocal = typeof handlers === 'function' ? handlers : handlers.onLocal;
+  const onOnline = typeof handlers === 'function' ? null : handlers.onOnline;
   const readers = new Map(); // option id -> () => value
 
-  const rows = manifest.options.map((def) => (def.type === 'select' ? selectRow(def, readers) : numberRow(def, readers)));
+  const rows = (manifest.options ?? []).map((def) => (def.type === 'select' ? selectRow(def, readers) : numberRow(def, readers)));
 
   function readValues() {
     return Object.fromEntries([...readers].map(([id, read]) => [id, read()]));
@@ -27,14 +31,28 @@ export function renderGameSetup(manifest, onStart) {
       class: 'setup',
       onsubmit: (e) => {
         e.preventDefault();
-        onStart(readValues());
+        onLocal(readValues());
       },
     },
     el('div', { class: 'setup__icon' }, manifest.icon ?? '🎲'),
     el('h2', {}, `${manifest.title}: game setup`),
     el('p', { class: 'muted' }, 'Choose your settings, then start. Defaults are a good place to begin.'),
     el('div', { class: 'setup__fields' }, rows),
-    el('button', { class: 'btn', type: 'submit' }, 'Start game'),
+    el(
+      'div',
+      { class: 'row-actions' },
+      el('button', { class: 'btn', type: 'submit' }, 'Play on this device'),
+      onOnline &&
+        el(
+          'button',
+          {
+            class: 'btn btn--ghost',
+            type: 'button',
+            onclick: () => onOnline(readValues()),
+          },
+          'Play online',
+        ),
+    ),
   );
 }
 

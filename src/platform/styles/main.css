@@ -131,6 +131,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .page__header { margin-bottom: 28px; }
 .page__header h1 { font-size: 2rem; letter-spacing: -0.5px; }
 .page__header p { margin-top: 6px; color: var(--muted); }
+.page__header .btn { margin-top: 12px; }
 
 .page-enter { animation: page-in 0.45s var(--ease) both; }
 @keyframes page-in {
@@ -377,4 +378,74 @@ button, summary, label { touch-action: manipulation; -webkit-tap-highlight-color
   .nav { flex: 1; flex-direction: row; gap: 6px; }
   .nav__item { flex: 1; justify-content: center; gap: 8px; padding: 10px 8px; font-size: 0.95rem; }
   .nav__item.is-active { box-shadow: inset 0 -3px 0 var(--primary), 0 2px 8px rgba(63, 143, 224, 0.15); }
+}
+
+/* Account, rooms, invites */
+.account__form { display: grid; gap: 10px; max-width: 360px; margin: 12px 0 20px; }
+.account__form input, .room-input {
+  padding: 10px 12px;
+  border: 1px solid var(--blue-200);
+  border-radius: 10px;
+  font: inherit;
+}
+.account__form h3, .panel h3 { margin: 8px 0 4px; }
+.account__msg { padding: 8px 12px; border-radius: 10px; }
+.account__msg.is-error { background: var(--red-100); color: #8a1f1c; }
+.friend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--blue-200);
+}
+.friend:last-child { border-bottom: 0; }
+.friend__actions { display: flex; gap: 8px; }
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #c5cdd8;
+  vertical-align: middle;
+}
+.dot.is-on { background: var(--green-500); }
+
+.room { display: grid; justify-items: center; gap: 16px; text-align: center; }
+.room__code {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  padding: 8px 20px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px dashed var(--blue-400);
+}
+.seats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(100%, 480px); }
+.seat {
+  padding: 16px;
+  border: 1px dashed var(--blue-200);
+  border-radius: 14px;
+  background: #fff;
+}
+.seat.is-filled { border-style: solid; background: var(--blue-50); }
+.seat__label { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
+.seat__name { font-size: 1.1rem; font-weight: 800; margin-top: 4px; }
+
+.invite-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  padding: 10px 14px;
+  border: 1px solid var(--blue-400);
+  border-radius: 14px;
+  background: #e8f3ff;
+  box-shadow: 0 8px 22px rgba(40, 70, 110, 0.22);
 }

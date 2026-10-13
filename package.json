@@ -6,11 +6,20 @@
   "description": "Modular board game platform (pass-and-play now, multiplayer-ready architecture)",
   "scripts": {
     "dev": "vite",
+    "dev:server": "wrangler dev",
+    "deploy:server": "wrangler deploy",
+    "db:apply": "wrangler d1 execute boardgames --remote --file=server/schema.sql",
+    "db:apply:local": "wrangler d1 execute boardgames --local --file=server/schema.sql",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test"
   },
   "devDependencies": {
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "wrangler": "^4.45.0"
+  },
+  "allowScripts": {
+    "workerd@1.20261006.1": true,
+    "esbuild@0.28.2": true
   }
 }

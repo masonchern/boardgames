@@ -17,18 +17,18 @@ Read this first. It assumes you have **zero prior context**. It covers what the 
 2. **Future online multiplayer through a server.** Phase 1 is local "pass-and-play" (one device, players take turns), but the architecture must not hard-code that. A WebSocket server must be addable later without rewriting games.
 3. **High-quality modern UI.** Bright light theme (Mason asked for it: white page background, black text, boxes in light blue / light brown by function), card layout, smooth transitions. Colors are CSS variables at the top of `src/platform/styles/main.css` (`--blue-*` interface, `--brown-*` games and boards, `--green-*`/`--red-*` status). Keep text black or near-black.
 
-### Current state (Phase 1, done)
-- Sidebar tabs: **Games** (lobby), **Account** (guest placeholder, buttons disabled), **Settings** (placeholder rows).
-- Lobby shows one game: **Close Circuit**, Mason's own invented game, fully playable in Normal and Advanced mode (see section 11). It is also the reference example of the plugin contract (options, timers, canvas view). The earlier Tic-Tac-Toe sample and the two "Secret Game" placeholders were removed at Mason's request (still in git history, commit before "Remove sample and placeholder games").
+### Current state
+- Sidebar tabs: **Games** (lobby), **Account** (register / sign in / guest / friends), **Settings** (placeholder rows).
+- Lobby shows one game: **Close Circuit**, Mason's own invented game, fully playable in Normal and Advanced mode (see section 11). Pass-and-play on one device, or **Play online** (room code, shareable link, friend invite).
+- Online referee is a Cloudflare Worker (`server/`): accounts in D1, one Durable Object per room, WebSockets. The site on GitHub Pages stays static.
 - The platform still supports `status: 'wip'` / `'coming-soon'` manifests (greyed-out lobby cards) for future games.
-- Deployed to GitHub Pages with auto-deploy on push to `main`.
+- Deployed to GitHub Pages with auto-deploy on push to `main`. The Worker deploys from the same workflow when Cloudflare secrets are set.
 - Unit tests for Close Circuit's rules (`npm test`), run in CI before every deploy.
 
 ### Not done yet (likely next work)
-- Real accounts / login (Account tab is a stub).
 - Real settings (sound, music, theme).
-- A game server and a `WebSocketTransport` (online mode).
-- Tuning Close Circuit's new advanced mode after Mason plays it (section 11), and more games.
+- Password reset / email; ranked matchmaking; more than 2 players; chat.
+- Tuning Close Circuit's advanced mode after Mason plays it (section 11), and more games.
 - Tests beyond Close Circuit's rules (nothing covers the platform or the views).
 
 ---
@@ -59,7 +59,9 @@ index.html                  Vite entry (loads src/main.js)
 package.json                Scripts: dev, build, preview, test
 vite.config.js              base './' (relative paths, works under /boardgames/)
 AGENTS.md                   This file
-.github/workflows/deploy.yml   CI: test + build + deploy to GitHub Pages on push to main
+.github/workflows/deploy.yml   CI: test + build + deploy Pages (and the Worker when secrets exist)
+wrangler.toml               Cloudflare Worker config (at repo root so it can import src/games/)
+server/                     Worker source, D1 schema, setup notes (server/README.md)
 docs/
   platform-spec.txt         Original product spec (Chinese)
 scripts/
@@ -70,15 +72,15 @@ src/
     types.js                The plugin CONTRACT (JSDoc typedefs). Read this to add a game.
                             (includes pre-game `options` and the `meta.now` time stamp)
     session.js              GameSession: client-side match, one-way data flow
-    transport.js            LocalTransport (in-memory fake server); WebSocket sketch in comments
+    transport.js            LocalTransport (pass-and-play) and WebSocketTransport (online)
+    auth.js / api.js / hub.js  Client session, HTTP API, presence socket
     gameLoader.js           mountGame(): resolves id -> loads module -> builds session -> mounts view
     registry.js             Auto-discovers games in src/games/ via import.meta.glob
-    router.js               Minimal hash router
+    router.js               Hash router (#/games, #/join/CODE, #/room/CODE, #/account)
     dom.js                  el() hyperscript helper
   platform/
     app.js                  Shell: sidebar tabs, route -> page rendering, page teardown
-    pages/                  lobby.js, gamePage.js, gameSetup.js (generic pre-game options screen),
-                            account.js, settings.js
+    pages/                  lobby.js, gamePage.js, gameSetup.js, room.js, join.js, account.js, settings.js
     styles/main.css         Platform shell styles
   games/                    One self-contained folder per game (nothing else lives here)
     close-circuit/          Mason's game: SPEC.txt, manifest.js, circuit.js, rules.js, rules.test.js, view.js, styles.css, index.js
@@ -110,7 +112,7 @@ Each game is a folder in `src/games/<id>/`:
 
 **Time and randomness:** rules must never call `Date.now()` or `Math.random()`. The authority (today `LocalTransport`, later the server) stamps every action with `meta.now` and `meta.seed` (random 32-bit int) and gives `setup` a `now` and a `seed`. Rules store deadlines in state and compare against `meta.now`; shuffles use a seeded RNG (`makeRandom(seed)` in Close Circuit's `rules.js`). This keeps rules deterministic and lets a server enforce time limits and own the shuffle.
 
-**Hidden information:** the authoritative state contains everything (for example both hands). The view must only show what its player may see. In pass-and-play the Close Circuit view covers the hand at the start of each turn ("Pass the device..."). Online play will need per-player state redaction on the server.
+**Hidden information:** the authoritative state contains everything (for example both hands). The view must only show what its player may see. In pass-and-play the Close Circuit view covers the hand at the start of each turn ("Pass the device..."). Online play: games export `redact(state, playerId)` (Close Circuit does); the Worker sends each client that subset.
 
 **Pre-game options:** if a manifest declares `options: [{ id, label, description, type, default, ... }]`, the platform shows a generic setup screen (`platform/pages/gameSetup.js`) before the game starts and passes the chosen values to `rules.setup({ options })`. Games without `options` start immediately. Two types exist: `number` (`min`, `max`, `step`, `unit`; with `unlimited: true` it also gets a "No limit" checkbox, and ticking it passes `null`, so rules must treat `null` as "no limit"; a missing value still means "use the default") and `select` (`choices: [{ value, label, description }]`, passes the chosen `value`).
 
@@ -140,6 +142,8 @@ Run from the project root (`c:\Users\mason\OneDrive\Desktop\Boardgames` on Mason
 | `npm run build` | Production build to `dist/` (this is what CI deploys) |
 | `npm test` | Run unit tests (Node's built-in runner, any `*.test.js`). Pure rules only, no DOM. CI runs this before deploying. |
 | `npm run preview` | Serve the built `dist/` locally (default port 4173) |
+| `npm run dev:server` | Cloudflare Worker locally at http://localhost:8787 (needs D1 schema applied with `npm run db:apply:local`) |
+| `npm run deploy:server` | Deploy the Worker (`npx wrangler login` first) |
 
 **Never tell end users to open `index.html` directly.** Source `index.html` uses ES modules, which browsers block on `file://`. Users play at the hosted URL; developers use `npm run dev`.
 
@@ -150,7 +154,7 @@ Run from the project root (`c:\Users\mason\OneDrive\Desktop\Boardgames` on Mason
 - Workflow: `.github/workflows/deploy.yml`. On every push to `main` it runs `npm ci`, `npm test`, `npm run build`, uploads `dist/`, and deploys with `actions/deploy-pages`. Takes about 30 seconds. A failing test blocks the deploy.
 - Pages is configured with **Source = GitHub Actions** (`build_type: workflow`). That was enabled once through the API. It does not need to be repeated.
 - To check a deploy: `gh run list --repo masonchern/boardgames --limit 3`, then `gh run watch <run-id> --repo masonchern/boardgames --exit-status`.
-- GitHub Pages only hosts static files. A future **game server must be hosted elsewhere** (for example Render, Fly.io, or Cloudflare Workers) and reached through a `WebSocketTransport`.
+- GitHub Pages only hosts static files. The **game server** is a Cloudflare Worker (`server/`), live at `https://boardgames-hub.masonchern.workers.dev`. CI deploys it when repo variable `WORKER_READY=1` and secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` are set. The site calls it via `VITE_API_URL` (baked in at build time). First-time setup is in `server/README.md`.
 
 ---
 

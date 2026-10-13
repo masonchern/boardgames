@@ -1,5 +1,6 @@
 import { GameSession } from './session.js';
 import { getManifest, loadGameModule } from './registry.js';
+import { WebSocketTransport } from './transport.js';
 
 /** Default players for local pass-and-play. */
 function defaultLocalPlayers(count) {
@@ -17,7 +18,14 @@ function defaultLocalPlayers(count) {
  *
  * @param {string} gameId
  * @param {HTMLElement} container
- * @param {{ exit: () => void, options?: Object }} hooks  `options` = pre-game settings
+ * @param {{
+ *   exit: () => void,
+ *   options?: Object,
+ *   mode?: 'local'|'online',
+ *   localPlayerId?: string|null,
+ *   players?: import('./types.js').Player[],
+ *   transport?: {connect:Function,send:Function,close:Function}|null,
+ * }} hooks
  * @returns {Promise<{ destroy: () => void }>}
  */
 export async function mountGame(gameId, container, hooks) {
@@ -26,13 +34,16 @@ export async function mountGame(gameId, container, hooks) {
   if (manifest.status !== 'playable') throw new Error(`Game not playable yet: ${gameId}`);
 
   const game = await loadGameModule(gameId);
-  const players = defaultLocalPlayers(manifest.players.min);
+  const mode = hooks.mode ?? 'local';
+  const players = hooks.players ?? defaultLocalPlayers(manifest.players.min);
 
   const session = new GameSession({
     rules: game.rules,
     players,
-    mode: 'local',
+    mode,
+    localPlayerId: hooks.localPlayerId ?? null,
     options: hooks.options ?? {},
+    transport: hooks.transport ?? undefined,
   });
 
   let view = null;
@@ -62,3 +73,5 @@ export async function mountGame(gameId, container, hooks) {
     },
   };
 }
+
+export { WebSocketTransport };

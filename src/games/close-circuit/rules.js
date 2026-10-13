@@ -605,3 +605,23 @@ function finish(state, winnerId, reason) {
   else draws += 1;
   return { ...state, wins, draws, phase: 'over', deadline: null, result: { winnerId, reason } };
 }
+
+/**
+ * What one player may see. Online play sends this instead of the full state.
+ * Opponent hands become card backs (line vs function). The draw deck is hidden
+ * except during a face-up challenge/solve, where only types remain.
+ */
+export function redact(state, playerId) {
+  if (!state || state.options?.mode !== 'advanced' || !state.hands) return state;
+  const hands = {};
+  for (const [id, cards] of Object.entries(state.hands)) {
+    hands[id] =
+      id === playerId ? cards : cards.map((c) => ({ back: isLineCard(c) ? 'line' : 'fn' }));
+  }
+  const fromPool = state.phase === 'challenge' || state.phase === 'solve';
+  return {
+    ...state,
+    hands,
+    deck: fromPool ? (state.deck ?? []).map((c) => ({ type: c.type })) : [],
+  };
+}

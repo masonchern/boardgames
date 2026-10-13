@@ -268,7 +268,9 @@ export function mount(container, api) {
   const handCovered = () => api.mode !== 'online' && revealedKey !== turnKey();
 
   const usedCardIds = () => new Set(draft.map((d) => d.cardId));
-  const myHand = () => (inHandPlay() ? state.hands[actorId()] ?? [] : []);
+  const meId = () => (api.mode === 'online' ? api.localPlayerId : actorId());
+  const isMyTurn = () => api.mode !== 'online' || actorId() === api.localPlayerId;
+  const myHand = () => (inHandPlay() ? state.hands[handOwnerId()] ?? [] : []);
   const unusedCards = (type) => myHand().filter((c) => c.type === type && !usedCardIds().has(c.id));
   const selectedCard = () => myHand().find((c) => c.id === selectedCardId && !usedCardIds().has(c.id)) ?? null;
 
@@ -379,10 +381,10 @@ export function mount(container, api) {
     hint.classList.add('is-error');
   }
   function submit() {
-    if (!state || state.phase === 'over' || !draft.length) return;
+    if (!state || state.phase === 'over' || !draft.length || !isMyTurn()) return;
     const action = { type: 'PLAY', placements: draft.map((d) => ({ ...d })) };
     // Check first, so a broken turn (for example a Limit that needs 3 cards) explains itself.
-    const verdict = rules.validate(state, action, actorId(), { now: Date.now() });
+    const verdict = rules.validate(state, action, meId(), { now: Date.now() });
     if (!verdict.ok) {
       showError(verdict.error);
       return;
@@ -394,7 +396,7 @@ export function mount(container, api) {
   }
 
   function placeAt(x, y) {
-    if (!state || state.phase === 'over' || draft.length >= maxDraft()) return;
+    if (!state || state.phase === 'over' || draft.length >= maxDraft() || !isMyTurn()) return;
     const { item, problem: early } = itemAt(x, y);
     const problem = early ?? placementProblem(state, draft, item);
     if (problem) {
@@ -734,9 +736,10 @@ export function mount(container, api) {
     const max = maxDraft();
     countEl.textContent = !active ? '' : max === Infinity ? `Cards used: ${draft.length}` : `Cards this turn: ${draft.length} / ${max}`;
     endBtn.textContent = challenge || pool ? 'Submit solution' : 'End turn';
-    endBtn.disabled = !active || !draft.length;
+    endBtn.disabled = !active || !draft.length || !isMyTurn();
     undoBtn.disabled = !draft.length;
-    const can = (type) => active && !draft.length && rules.validate(state, { type }, actorId(), { now: Date.now() }).ok;
+    const can = (type) =>
+      active && isMyTurn() && !draft.length && rules.validate(state, { type }, meId(), { now: Date.now() }).ok;
     challengeBtn.node.disabled = !can('CHALLENGE');
     solveBtn.node.hidden = !advanced;
     solveBtn.node.disabled = !can('SOLVE');
@@ -744,7 +747,7 @@ export function mount(container, api) {
       state.deckRemaining > ADVANCED.solveAtDeck
         ? `Solve unlocks when ${ADVANCED.solveAtDeck} or fewer cards remain in the deck`
         : 'Close the circuit with the cards left in the deck, or lose';
-    resignBtn.node.disabled = !active;
+    resignBtn.node.disabled = !active || !isMyTurn();
     controls.classList.toggle('is-disabled', !active);
     controls.hidden = !active;
 
@@ -771,7 +774,8 @@ export function mount(container, api) {
         },
         isFunction ? '🎁' : '🐾',
       );
-    const functions = hand.filter((c) => !isLineType(c.type)).length;
+    const isFn = (c) => c.back === 'fn' || (c.type && !isLineType(c.type) && !c.back);
+    const functions = hand.filter(isFn).length;
     return [...Array(hand.length - functions).fill(0).map(() => back(false)), ...Array(functions).fill(0).map(() => back(true))];
   }
 
@@ -813,7 +817,7 @@ export function mount(container, api) {
     const nameOf = (id) => state.players.find((p) => p.id === id).name;
     const ownerId = handOwnerId() ?? actorId();
     const oppId = state.players.find((p) => p.id !== ownerId).id;
-    const oppHand = state.hands[oppId];
+    const oppHand = state.hands[oppId] ?? [];
     oppLabel.textContent = `${nameOf(oppId)}'s hand: ${oppHand.length} card${oppHand.length === 1 ? '' : 's'}`;
     oppBacks.replaceChildren(...backsOf(oppHand));
 
@@ -855,12 +859,18 @@ export function mount(container, api) {
       hint.textContent = 'Place the first card in the highlighted center cell.';
     } else if (inHandPlay() && selectedCard()?.type === 'cross') {
       hint.textContent = 'Tap a straight line on the board to turn it into an intersection (+).';
+    } else if (inHandPlay() && !isMyTurn()) {
+      hint.textContent = `Waiting for ${state.players.find((p) => p.id === actorId())?.name ?? 'the other player'}…`;
     } else if (inHandPlay()) {
       hint.textContent = 'Pick a card from your hand, then tap a cell next to the board. Press End turn when done.';
     } else if (state.phase === 'solve') {
       hint.textContent = 'Close the circuit with the cards left in the deck, then submit. Every line end must be connected.';
     } else if (state.phase === 'challenge') {
-      hint.textContent = 'Place cards so that every line end is connected, then submit.';
+      hint.textContent = isMyTurn()
+        ? 'Place cards so that every line end is connected, then submit.'
+        : `Waiting for ${state.players.find((p) => p.id === actorId())?.name ?? 'the other player'}…`;
+    } else if (!isMyTurn()) {
+      hint.textContent = `Waiting for ${state.players.find((p) => p.id === actorId())?.name ?? 'the other player'}…`;
     } else {
       hint.textContent = draft.length
         ? 'Add cards next to this turn\'s cards, in one straight line (up to 3).'
