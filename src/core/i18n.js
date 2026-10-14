@@ -244,7 +244,7 @@ const STRINGS = {
     'cc.fitTitle': 'Zoom in to show all played cards plus a 2-tile border',
     'cc.straightTitle': 'Straight line (T)',
     'cc.turnTitle': 'Turning line (T)',
-    'cc.rotateTitle': 'Rotate (R or right-click)',
+    'cc.rotateTitle': 'Rotate (R)',
     'cc.undoTitle': 'Undo last card (Z)',
     'cc.card.straight': 'Straight',
     'cc.card.turn': 'Turn',
@@ -308,8 +308,16 @@ const STRINGS = {
     'cc.err.showFirst': 'Show your cards first',
     'cc.err.pickFirst': 'Pick a card from your hand first',
     'cc.err.limitNoCell': 'The Limit card has no cell: tap it again to use or remove it',
+    'cc.measure.zero': '0',
+    'cc.measure.x': 'Δx {n}',
+    'cc.measure.y': 'Δy {n}',
+    'cc.measure.xy': 'Δx {x} · Δy {y}',
+    'cc.hint.measure':
+      'Measuring from ({x}, {y}): {len}. Scroll to change length along x, Shift+scroll for y. Move the pointer to another cell, or right-click the start / press Esc to stop. Rotate with R.',
+    'cc.how.measure':
+      'Right-click a cell to measure. Scroll the wheel (or left/right on a trackpad) to change the length along x; hold Shift and scroll for y. You can also move the pointer to another cell. The number is how many cells apart (center is 0, 0). Right-click the start again or press Esc to stop. Rotate with R or the Rotate button.',
     'cc.how.controls':
-      'Controls: click or tap a cell to place · Rotate button (R or right-click) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel, pinch or the − / + buttons to zoom · Fit zooms in as far as possible while still showing every card plus a 2-tile border. Red dots mark open line ends.',
+      'Controls: click or tap a cell to place · Rotate button (R) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel, pinch or the − / + buttons to zoom (Ctrl+wheel zooms while measuring) · Fit zooms in as far as possible while still showing every card plus a 2-tile border. Red dots mark open line ends.',
     'cc.how.adv1':
       'Advanced mode: the deck has 48 straight and 24 turn cards plus 4 Limit and 4 Cross function cards, shuffled. Each player holds 5 cards and refills to 5 after every turn until the deck runs out.',
     'cc.how.adv2':
@@ -579,7 +587,7 @@ STRINGS['zh-Hant'] = {
   'cc.fitTitle': '放大到能看到所有已放的牌，外加兩格邊距',
   'cc.straightTitle': '直線（T）',
   'cc.turnTitle': '轉彎（T）',
-  'cc.rotateTitle': '旋轉（R 或右鍵）',
+  'cc.rotateTitle': '旋轉（R）',
   'cc.undoTitle': '復原上一張（Z）',
   'cc.card.straight': '直線',
   'cc.card.turn': '轉彎',
@@ -642,8 +650,16 @@ STRINGS['zh-Hant'] = {
   'cc.err.showFirst': '請先顯示手牌',
   'cc.err.pickFirst': '請先選手牌',
   'cc.err.limitNoCell': '「限制」卡沒有格子：再點一次以使用或取消',
+  'cc.measure.zero': '0',
+  'cc.measure.x': 'Δx {n}',
+  'cc.measure.y': 'Δy {n}',
+  'cc.measure.xy': 'Δx {x} · Δy {y}',
+  'cc.hint.measure':
+    '從 ({x}, {y}) 測量：{len}。滾輪左右改 x 方向長度，Shift+滾輪改 y。也可把指標移到另一格。再右鍵起點或按 Esc 結束。旋轉請用 R。',
+  'cc.how.measure':
+    '在格子上按右鍵開始測量。滾輪（或觸控板左右滑）改變 x 方向長度；按住 Shift 再滾改變 y。也可把指標移到另一格。數字是相隔幾格（中央為 0, 0）。再右鍵起點或按 Esc 結束。旋轉請用 R 或旋轉鈕。',
   'cc.how.controls':
-    '操作：點格子放牌 · 旋轉鈕（R 或右鍵）轉動目前選中的牌 · T 切換直線／轉彎 · Z 復原 · 拖曳平移 · 滾輪、雙指或 −／＋ 縮放 ·「剛好」會放到能看到每張牌再加兩格邊。紅點標示未接線頭。',
+    '操作：點格子放牌 · 旋轉鈕（R）轉動目前選中的牌 · T 切換直線／轉彎 · Z 復原 · 拖曳平移 · 滾輪、雙指或 −／＋ 縮放（測量時 Ctrl+滾輪仍可縮放） ·「剛好」會放到能看到每張牌再加兩格邊。紅點標示未接線頭。',
   'cc.how.adv1':
     '進階模式：牌庫有 48 張直線、24 張轉彎，以及 4 張「限制」與 4 張「交叉」功能卡，洗勻。每人持 5 張，每回合結束補到 5 張，直到牌庫抽完。',
   'cc.how.adv2':

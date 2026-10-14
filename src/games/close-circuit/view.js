@@ -85,6 +85,8 @@ export function mount(container, api) {
   let cardRots = {}; // cardId -> rotation
   const rotOf = (card) => cardRots[card.id] ?? 0;
   let hover = null; // { x, y } cell under the pointer
+  // Ruler: right-click a cell, then scroll or move to another cell to read the length.
+  let measure = null; // { ox, oy, x, y } origin and far end, in grid cells
   let showOpenEnds = true;
   let timeoutSentFor = null;
   let drawQueued = false;
@@ -217,6 +219,7 @@ export function mount(container, api) {
         ]
       : [t('cc.how.n1'), t('cc.how.n2'), t('cc.how.nEdit'), t('cc.how.n3'), t('cc.how.n4'), t('cc.how.n5'), t('cc.how.n6')];
     if (state?.options.coordinates !== 'off') lines.push(t('cc.how.coords'));
+    lines.push(t('cc.how.measure'));
     howList.replaceChildren(...[...lines, t('cc.how.controls')].map((line) => el('li', {}, line)));
   }
 
@@ -750,6 +753,59 @@ export function mount(container, api) {
     }
 
     drawCoordinates(ctx, g, s);
+    drawMeasure(ctx, g, s);
+  }
+
+  function measureText() {
+    if (!measure) return '';
+    const dx = measure.x - measure.ox;
+    const dy = measure.oy - measure.y; // display y: up is positive
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+    if (ax === 0 && ay === 0) return t('cc.measure.zero');
+    if (ay === 0) return t('cc.measure.x', { n: ax });
+    if (ax === 0) return t('cc.measure.y', { n: ay });
+    return t('cc.measure.xy', { x: ax, y: ay });
+  }
+
+  function drawMeasure(ctx, g, s) {
+    if (!measure) return;
+    const [sx, sy] = toScreen(measure.ox + 0.5, measure.oy + 0.5);
+    const [ex, ey] = toScreen(measure.x + 0.5, measure.y + 0.5);
+    const [mx, my] = toScreen(measure.x + 0.5, measure.oy + 0.5);
+    ctx.save();
+    ctx.strokeStyle = '#3d5aaa';
+    ctx.fillStyle = '#3d5aaa';
+    ctx.lineWidth = Math.max(2, s * 0.05);
+    ctx.setLineDash([7, 5]);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    if (measure.ox !== measure.x && measure.oy !== measure.y) {
+      ctx.lineTo(mx, my);
+    }
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const r = Math.max(4, s * 0.12);
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(ex, ey, r, 0, Math.PI * 2);
+    ctx.fill();
+    const label = measureText();
+    const lx = (sx + ex) / 2;
+    const ly = (sy + ey) / 2 - Math.max(12, s * 0.22);
+    const fontSize = Math.max(12, Math.min(18, Math.round(s * 0.36)));
+    ctx.font = `800 ${fontSize}px Inter, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(255, 246, 220, 0.92)';
+    ctx.strokeText(label, lx, ly);
+    ctx.fillStyle = '#2a3d7a';
+    ctx.fillText(label, lx, ly);
+    ctx.restore();
   }
 
   /** Light split on a just-placed line card: right side rotates, the rest toggles kind (normal/pool). */
@@ -1003,6 +1059,13 @@ export function mount(container, api) {
     hint.classList.remove('is-error', 'is-good');
     if (!state || state.phase === 'over') {
       hint.textContent = '';
+    } else if (measure) {
+      const origin = centerCell(state.options.gridSize);
+      hint.textContent = t('cc.hint.measure', {
+        x: measure.ox - origin,
+        y: origin - measure.oy,
+        len: measureText(),
+      });
     } else if (draft.some(hasPosition) && isWinningBoard(mergedBoard(), state.options)) {
       hint.textContent = t('cc.hint.win');
       hint.classList.add('is-good');
@@ -1123,7 +1186,17 @@ export function mount(container, api) {
     }
     const [x, y] = toCell(px, py);
     const [sx] = toScreen(x, y);
+    const cellChanged = !hover || hover.x !== x || hover.y !== y;
     hover = { x, y, localX: cam.size ? (px - sx) / cam.size : 0 };
+    // Follow the pointer to a new cell; stay put if the cursor hasn't left this cell
+    // (so the wheel can still nudge length without snapping back).
+    if (measure && cellChanged && !dragging?.moved && state) {
+      const g = state.options.gridSize;
+      if (x >= 0 && y >= 0 && x < g && y < g) {
+        measure.x = x;
+        measure.y = y;
+      }
+    }
     canvas.classList.toggle('is-tuning', Boolean(!dragging?.moved && editableDraftAt(x, y)));
     if (state && state.phase !== 'over' && !dragging?.moved) {
       if (editableDraftAt(x, y)) {
@@ -1141,7 +1214,7 @@ export function mount(container, api) {
   function releasePointer(e, allowTap) {
     pointers.delete(e.pointerId);
     pinch = null;
-    if (allowTap && dragging && !dragging.moved && pointers.size === 0) {
+    if (allowTap && dragging && !dragging.moved && pointers.size === 0 && e.button === 0) {
       tapAt(...canvasPoint(e));
     }
     if (pointers.size === 1) {
@@ -1164,6 +1237,23 @@ export function mount(container, api) {
     'wheel',
     (e) => {
       e.preventDefault();
+      // Measuring: the wheel changes length. Ctrl/Cmd+wheel still zooms.
+      if (measure && state && !e.ctrlKey && !e.metaKey) {
+        const g = state.options.gridSize;
+        const horiz = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+        const raw = horiz ? e.deltaX : e.deltaY;
+        if (raw) {
+          const dir = raw > 0 ? 1 : -1;
+          if (horiz || !e.shiftKey) {
+            measure.x = Math.max(0, Math.min(g - 1, measure.x + dir));
+          } else {
+            measure.y = Math.max(0, Math.min(g - 1, measure.y + dir));
+          }
+          updateHint();
+          scheduleDraw();
+        }
+        return;
+      }
       const [px, py] = canvasPoint(e);
       const wx = (px - cssW / 2) / cam.size + cam.cx;
       const wy = (py - cssH / 2) / cam.size + cam.cy;
@@ -1179,14 +1269,25 @@ export function mount(container, api) {
   canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    // A long-press on a touch screen also fires this; only a real right-click should rotate.
-    if (e.pointerType !== 'touch') rotate();
+    // Long-press on a phone also fires this; measuring is a mouse/trackpad action.
+    if (e.pointerType === 'touch' || !state) return;
+    const [x, y] = toCell(...canvasPoint(e));
+    const g = state.options.gridSize;
+    if (x < 0 || y < 0 || x >= g || y >= g) return;
+    if (measure && measure.ox === x && measure.oy === y) measure = null;
+    else measure = { ox: x, oy: y, x, y };
+    updateHint();
+    scheduleDraw();
   });
 
   const onKey = (e) => {
     if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     const k = e.key.toLowerCase();
-    if (k === 'r') rotate();
+    if (k === 'escape' && measure) {
+      measure = null;
+      updateHint();
+      scheduleDraw();
+    } else if (k === 'r') rotate();
     else if (k === 't') setKind(kind === 'straight' ? 'turn' : 'straight');
     else if (k === 'z' || k === 'backspace') undo();
   };
