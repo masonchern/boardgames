@@ -69,3 +69,12 @@ UPDATE (Oct 2026): optional coordinates on the board (both modes)
 The setup screen has a Coordinates setting (on by default). When on, x and y numbers sit on
 the sides of the board. The center cell is (0, 0); x increases to the right, y increases up.
 Turn it off to hide the numbers. Gameplay is the same either way.
+
+----------------------------------------------------------------------
+UPDATE (Oct 2026): tap a tile you just placed to edit it (this turn's draft only)
+
+Normal (and advanced challenge/solve from the face-up deck): tap the middle of the tile to
+switch between straight and turn; tap the right side to rotate. A straight has 2 directions
+(click twice to return); a turn has 4 (click four times to return).
+
+Advanced hand play: the card type is fixed by the hand, so only the right side rotates.

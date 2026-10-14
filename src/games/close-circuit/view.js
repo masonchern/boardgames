@@ -46,6 +46,8 @@ const MIN_SIZE = 5; // zoom limits, in pixels per cell (5 lets a phone show a bi
 const MAX_SIZE = 96;
 const DEFAULT_SIZE = 56;
 const FIT_MARGIN = 2; // empty tiles kept around the played cards by the "Fit" button
+// Tap the right part of a just-placed tile to rotate it; the rest of the cell toggles kind (normal/pool).
+const ROTATE_EDGE = 0.6;
 
 /**
  * Close Circuit view: renders the state on a canvas and turns clicks into actions.
@@ -204,6 +206,7 @@ export function mount(container, api) {
       ? [
           t('cc.how.adv1'),
           t('cc.how.adv2'),
+          t('cc.how.advEdit'),
           t('cc.how.adv3'),
           t('cc.how.adv4'),
           t('cc.how.adv5'),
@@ -212,7 +215,7 @@ export function mount(container, api) {
           t('cc.how.adv8'),
           t('cc.how.adv9'),
         ]
-      : [t('cc.how.n1'), t('cc.how.n2'), t('cc.how.n3'), t('cc.how.n4'), t('cc.how.n5'), t('cc.how.n6')];
+      : [t('cc.how.n1'), t('cc.how.n2'), t('cc.how.nEdit'), t('cc.how.n3'), t('cc.how.n4'), t('cc.how.n5'), t('cc.how.n6')];
     if (state?.options.coordinates !== 'off') lines.push(t('cc.how.coords'));
     howList.replaceChildren(...[...lines, t('cc.how.controls')].map((line) => el('li', {}, line)));
   }
@@ -420,6 +423,54 @@ export function mount(container, api) {
       selectedCardId = unusedCards(item.kind)[0]?.id ?? null;
     }
     refresh();
+  }
+
+  /** A line card placed this turn that a tap can still edit (not a Cross/Limit). */
+  function editableDraftAt(x, y) {
+    if (!state || state.phase === 'over' || !isMyTurn()) return null;
+    // A selected Cross still targets a straight, including one placed earlier this turn.
+    if (inHandPlay() && selectedCard()?.type === 'cross') return null;
+    return draft.find((d) => hasPosition(d) && d.x === x && d.y === y && isLineType(d.kind)) ?? null;
+  }
+
+  function rotateDraft(piece) {
+    const n = CARD_KINDS[piece.kind].rotations;
+    piece.rot = ((piece.rot ?? 0) + 1) % n;
+    if (piece.cardId) cardRots[piece.cardId] = piece.rot;
+    else rots[piece.kind] = piece.rot;
+    kind = piece.kind;
+  }
+
+  function toggleDraftKind(piece) {
+    const next = piece.kind === 'straight' ? 'turn' : 'straight';
+    if (inPool()) {
+      const left = poolLeft();
+      if (left[next] <= 0) {
+        showError(t('cc.err.noKindLeft', { kind: t(`cc.card.${next}`) }));
+        return false;
+      }
+    }
+    piece.kind = next;
+    piece.rot = (piece.rot ?? 0) % CARD_KINDS[next].rotations;
+    kind = next;
+    rots[next] = piece.rot;
+    return true;
+  }
+
+  /** Tap an empty cell to place; tap a tile you just placed to tweak it. */
+  function tapAt(px, py) {
+    const [x, y] = toCell(px, py);
+    const editing = editableDraftAt(x, y);
+    if (editing) {
+      const localX = (px - toScreen(x, y)[0]) / cam.size;
+      if (localX >= ROTATE_EDGE) rotateDraft(editing);
+      else if (!inHandPlay()) {
+        if (!toggleDraftKind(editing)) return;
+      }
+      refresh();
+      return;
+    }
+    placeAt(x, y);
   }
 
   // ---- Camera ----
@@ -668,8 +719,8 @@ export function mount(container, api) {
       drawPiece(ctx, { ...piece, rot: piece.rot ?? 0 }, me, { alpha: 0.9, dashed: true, owner: piece.kind === 'cross' ? state.board[cellKey(piece.x, piece.y)]?.owner ?? meId : meId });
     }
 
-    // Ghost under the pointer
-    if (active && hover && draft.length < maxDraft()) {
+    // Ghost under the pointer (skip when the pointer is on a tile you can still edit)
+    if (active && hover && draft.length < maxDraft() && !editableDraftAt(hover.x, hover.y)) {
       const { item: candidate } = itemAt(hover.x, hover.y);
       const problem = candidate ? placementProblem(state, draft, candidate) : 'no card';
       if (!problem) {
@@ -680,6 +731,8 @@ export function mount(container, api) {
         ctx.fillRect(hx, hy, s, s);
       }
     }
+
+    drawDraftHotspots(ctx, s);
 
     // Open ends: line ends that do not connect to anything
     if (showOpenEnds) {
@@ -697,6 +750,31 @@ export function mount(container, api) {
     }
 
     drawCoordinates(ctx, g, s);
+  }
+
+  /** Light split on a just-placed line card: right side rotates, the rest toggles kind (normal/pool). */
+  function drawDraftHotspots(ctx, s) {
+    if (!state || state.phase === 'over' || !isMyTurn()) return;
+    for (const piece of draft) {
+      if (!editableDraftAt(piece.x, piece.y)) continue;
+      const [sx, sy] = toScreen(piece.x, piece.y);
+      const split = sx + s * ROTATE_EDGE;
+      if (s >= 28) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+        ctx.fillRect(split, sy + 2, s * (1 - ROTATE_EDGE) - 2, s - 4);
+        ctx.fillStyle = 'rgba(90, 52, 24, 0.45)';
+        ctx.font = `700 ${Math.max(11, Math.round(s * 0.28))}px Inter, system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⟳', split + (s * (1 - ROTATE_EDGE)) / 2, sy + s / 2);
+      }
+      if (hover && hover.x === piece.x && hover.y === piece.y) {
+        const right = (hover.localX ?? 0) >= ROTATE_EDGE;
+        ctx.fillStyle = 'rgba(63, 143, 224, 0.22)';
+        if (right) ctx.fillRect(split, sy, s * (1 - ROTATE_EDGE), s);
+        else if (!inHandPlay()) ctx.fillRect(sx, sy, s * ROTATE_EDGE, s);
+      }
+    }
   }
 
   /**
@@ -932,6 +1010,10 @@ export function mount(container, api) {
       hint.textContent = t('cc.hint.cover');
     } else if (boardIsEmpty() && !draft.length) {
       hint.textContent = t('cc.hint.first');
+    } else if (hover && editableDraftAt(hover.x, hover.y)) {
+      if ((hover.localX ?? 0) >= ROTATE_EDGE) hint.textContent = t('cc.hint.tapRight');
+      else if (!inHandPlay()) hint.textContent = t('cc.hint.tapMiddle');
+      else hint.textContent = t('cc.hint.tapRight');
     } else if (inHandPlay() && selectedCard()?.type === 'cross') {
       hint.textContent = t('cc.hint.cross');
     } else if (inHandPlay() && !isMyTurn()) {
@@ -945,7 +1027,9 @@ export function mount(container, api) {
     } else if (!isMyTurn()) {
       hint.textContent = waitingFor();
     } else {
-      hint.textContent = draft.length ? t('cc.hint.addLine') : t('cc.hint.place');
+      hint.textContent = draft.length
+        ? t(inHandPlay() ? 'cc.hint.addLineAdv' : 'cc.hint.addLine')
+        : t('cc.hint.place');
     }
   }
 
@@ -1038,11 +1122,16 @@ export function mount(container, api) {
       }
     }
     const [x, y] = toCell(px, py);
-    if (!hover || hover.x !== x || hover.y !== y) hover = { x, y };
-    if (state && state.phase !== 'over' && draft.length < maxDraft() && !dragging?.moved) {
-      const problem = problemAt(x, y);
-      if (problem) {
-        showError(problem);
+    const [sx] = toScreen(x, y);
+    hover = { x, y, localX: cam.size ? (px - sx) / cam.size : 0 };
+    canvas.classList.toggle('is-tuning', Boolean(!dragging?.moved && editableDraftAt(x, y)));
+    if (state && state.phase !== 'over' && !dragging?.moved) {
+      if (editableDraftAt(x, y)) {
+        updateHint();
+      } else if (draft.length < maxDraft()) {
+        const problem = problemAt(x, y);
+        if (problem) showError(problem);
+        else updateHint();
       } else {
         updateHint();
       }
@@ -1053,8 +1142,7 @@ export function mount(container, api) {
     pointers.delete(e.pointerId);
     pinch = null;
     if (allowTap && dragging && !dragging.moved && pointers.size === 0) {
-      const [x, y] = toCell(...canvasPoint(e));
-      placeAt(x, y);
+      tapAt(...canvasPoint(e));
     }
     if (pointers.size === 1) {
       // One finger left after a pinch: continue as a pan from where it is now, never as a tap
@@ -1069,6 +1157,7 @@ export function mount(container, api) {
   canvas.addEventListener('pointercancel', (e) => releasePointer(e, false));
   canvas.addEventListener('pointerleave', () => {
     hover = null;
+    canvas.classList.remove('is-tuning');
     scheduleDraw();
   });
   canvas.addEventListener(

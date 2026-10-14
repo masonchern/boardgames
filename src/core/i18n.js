@@ -278,8 +278,12 @@ const STRINGS = {
     'cc.hint.hand': 'Pick a card from your hand, then tap a cell next to the board. Press End turn when done.',
     'cc.hint.solve': 'Close the circuit with the cards left in the deck, then submit. Every line end must be connected.',
     'cc.hint.challengeMe': 'Place cards so that every line end is connected, then submit.',
-    'cc.hint.addLine': "Add cards next to this turn's cards, in one straight line (up to 3).",
+    'cc.hint.addLine':
+      "Add cards next to this turn's cards, in one straight line (up to 3). Tap a placed tile's middle to switch straight/turn, or its right side to rotate.",
+    'cc.hint.addLineAdv': "Add cards next to the board. Tap the right side of a tile you just placed to rotate it.",
     'cc.hint.place': 'Tap any empty cell to place a card. Cards in one turn must form a straight line.',
+    'cc.hint.tapMiddle': 'Tap the middle of this tile to switch between straight and turn.',
+    'cc.hint.tapRight': 'Tap the right side of this tile to rotate it.',
     'cc.otherPlayer': 'the other player',
     'cc.result.closed': '{winner} closed the circuit and wins!',
     'cc.result.challenge-success': '{winner} answered the challenge and closed the circuit!',
@@ -310,6 +314,8 @@ const STRINGS = {
       'Advanced mode: the deck has 48 straight and 24 turn cards plus 4 Limit and 4 Cross function cards, shuffled. Each player holds 5 cards and refills to 5 after every turn until the deck runs out.',
     'cc.how.adv2':
       'On your turn play 1 to 3 cards from your hand (function cards count too, and at least one must be a straight or turn). Tap a card, then tap a cell next to the board. The first card goes in the center. Then press End turn.',
+    'cc.how.advEdit':
+      'After placing a straight or turn, tap the right side of that tile to rotate it (a straight has 2 directions, a turn has 4). The type is fixed by the card in your hand.',
     'cc.how.adv3':
       'Limit: your opponent must play 3 straight/turn cards next turn (or all they have if fewer). Cross: turns a straight line already on the board into an intersection (+); all four sides must connect. Hover over or tap a function card to see what it does.',
     'cc.how.adv4':
@@ -324,6 +330,8 @@ const STRINGS = {
     'cc.how.n1': 'Both players share one deck of 48 line cards. Each card can be placed as a straight line or a 90° turn.',
     'cc.how.n2':
       'On your turn place 1 to 3 cards. The very first card goes in the center. After that cards can go anywhere, they do not have to touch the board. But the cards you place in one turn must be next to each other in a straight line (any mix of straights and turns). An L shape is not allowed. Then press End turn.',
+    'cc.how.nEdit':
+      'After placing a card you can still change it: tap the middle of the tile to switch between straight and turn, or tap the right side to rotate (a straight has 2 directions, a turn has 4). Then press End turn.',
     'cc.how.n3':
       'Close the circuit to win: every line end on the board must connect to another, with nothing sticking out, and every card on the board must belong to the same single circuit. A square or rectangle works; a single line, or two separate loops, does not.',
     'cc.how.n4':
@@ -605,8 +613,11 @@ STRINGS['zh-Hant'] = {
   'cc.hint.hand': '先選手牌，再點緊鄰棋盤的空格。完成後按「結束回合」。',
   'cc.hint.solve': '用牌庫剩下的牌閉合迴路後提交。每個線頭都必須接上。',
   'cc.hint.challengeMe': '把每個線頭都接上，然後提交。',
-  'cc.hint.addLine': '本回合的牌必須彼此相鄰、成一直線（最多 3 張）。',
+  'cc.hint.addLine': '本回合的牌必須彼此相鄰、成一直線（最多 3 張）。點剛放下的牌：中間切換直線／轉彎，右側旋轉。',
+  'cc.hint.addLineAdv': '點緊鄰棋盤的空格放牌。點剛放下的牌的右側可以旋轉。',
   'cc.hint.place': '點任意空格放牌。同一回合的牌必須成一直線。',
+  'cc.hint.tapMiddle': '點這張牌的中間，在直線與轉彎之間切換。',
+  'cc.hint.tapRight': '點這張牌的右側來旋轉。',
   'cc.otherPlayer': '對方',
   'cc.result.closed': '{winner} 閉合迴路，獲勝！',
   'cc.result.challenge-success': '{winner} 回應挑戰並閉合迴路！',
@@ -637,6 +648,8 @@ STRINGS['zh-Hant'] = {
     '進階模式：牌庫有 48 張直線、24 張轉彎，以及 4 張「限制」與 4 張「交叉」功能卡，洗勻。每人持 5 張，每回合結束補到 5 張，直到牌庫抽完。',
   'cc.how.adv2':
     '你的回合從手牌打出 1 到 3 張（功能卡也算張數，且至少一張必須是直線或轉彎）。先點卡再點緊鄰棋盤的空格。第一張放中央。然後按「結束回合」。',
+  'cc.how.advEdit':
+    '放下直線或轉彎後，點該牌的右側可以旋轉（直線有 2 個方向，轉彎有 4 種）。種類由手牌決定，不能改。',
   'cc.how.adv3':
     '限制：對方下回合必須打出 3 張直線／轉彎（若不足 3 張則全打）。交叉：把棋盤上已有的直線變成十字交叉（+），四個方向都必須接上。將滑鼠移到或點一下功能卡可查看說明。',
   'cc.how.adv4':
@@ -651,6 +664,8 @@ STRINGS['zh-Hant'] = {
   'cc.how.n1': '兩位玩家共用 48 張線條卡。每張可放成直線或直角轉彎。',
   'cc.how.n2':
     '每回合放 1 到 3 張。第一張必須放中央。之後可放在任意空格，不必碰到已有的牌。但同一回合放下的牌必須彼此相鄰、成一直線（直線與轉彎可混用），不能呈 L 形。然後按「結束回合」。',
+  'cc.how.nEdit':
+    '放下後還能改：點牌的中間在直線與轉彎之間切換，點右側旋轉（直線 2 個方向，轉彎 4 種）。然後按「結束回合」。',
   'cc.how.n3':
     '閉合迴路即可獲勝：棋盤上每個線頭都必須接到另一張牌，不能有突出的線，而且所有牌必須屬於同一條迴路。正方形或長方形可以；單一線段或兩個分開的環不行。',
   'cc.how.n4':
