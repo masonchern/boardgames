@@ -114,6 +114,12 @@ const STRINGS = {
     'opt.close-circuit.mode.advanced': 'Advanced',
     'opt.close-circuit.mode.advanced.desc':
       'Hands of 5 cards, 72 line cards plus function cards (Limit, Cross), face-up solving and "solve" late in the game.',
+    'opt.close-circuit.coordinates.label': 'Coordinates',
+    'opt.close-circuit.coordinates.desc': 'Numbers along the sides of the board. The center cell is (0, 0).',
+    'opt.close-circuit.coordinates.on': 'On',
+    'opt.close-circuit.coordinates.on.desc': 'Show x and y on the sides. Center is (0, 0); x goes right, y goes up.',
+    'opt.close-circuit.coordinates.off': 'Off',
+    'opt.close-circuit.coordinates.off.desc': 'No coordinate numbers on the board.',
     'opt.close-circuit.turnSeconds.label': 'Time per turn',
     'opt.close-circuit.turnSeconds.desc': 'Seconds each player has to make a move. Running out of time loses the game.',
     'opt.close-circuit.turnSeconds.unit': 'seconds',
@@ -324,6 +330,8 @@ const STRINGS = {
       'Instead of placing cards you can challenge with "No solution!". The other player then gets extra time and may use all the cards left in the deck, in any shape, to close the circuit. If they manage it they win, otherwise you do.',
     'cc.how.n5': 'When the deck runs out the game is a draw unless the circuit is closed.',
     'cc.how.n6': 'Run out of time and you lose the game. Player 1 starts the first game, player 2 the next, and so on.',
+    'cc.how.coords':
+      'Numbers along the sides are coordinates. The center cell is (0, 0); x increases to the right, y increases upward.',
 
     'Cannot reach the game server. Is it running?': 'Cannot reach the game server. Is it running?',
     'Request failed': 'Request failed',
@@ -435,6 +443,12 @@ STRINGS['zh-Hant'] = {
   'opt.close-circuit.mode.advanced': '進階',
   'opt.close-circuit.mode.advanced.desc':
     '每人 5 張手牌，72 張線條卡外加功能卡（限制、交叉），可翻開牌庫解題，牌庫剩少時可「解題」。',
+  'opt.close-circuit.coordinates.label': '座標',
+  'opt.close-circuit.coordinates.desc': '在棋盤邊上顯示數字。中央格為 (0, 0)。',
+  'opt.close-circuit.coordinates.on': '顯示',
+  'opt.close-circuit.coordinates.on.desc': '在邊上顯示 x、y。中央為 (0, 0)；x 向右，y 向上。',
+  'opt.close-circuit.coordinates.off': '不顯示',
+  'opt.close-circuit.coordinates.off.desc': '棋盤上不顯示座標。',
   'opt.close-circuit.turnSeconds.label': '每回合時間',
   'opt.close-circuit.turnSeconds.desc': '每位玩家完成行動的秒數。時間用完即輸掉本局。',
   'opt.close-circuit.turnSeconds.unit': '秒',
@@ -643,6 +657,7 @@ STRINGS['zh-Hant'] = {
     '也可以不放牌、用「無解！」挑戰。對方會得到加時，並可用牌庫剩下的全部牌、任意形狀來閉合迴路。成功則對方勝，否則你勝。',
   'cc.how.n5': '牌庫用盡且迴路未閉合則為和局。',
   'cc.how.n6': '時間用完即輸掉本局。第 1 局由玩家 1 先手，第 2 局由玩家 2 先手，依此類推。',
+  'cc.how.coords': '邊上的數字是座標。中央格為 (0, 0)；x 向右增加，y 向上增加。',
 
   'Cannot reach the game server. Is it running?': '連不上遊戲伺服器。伺服器有在執行嗎？',
   'Request failed': '請求失敗',

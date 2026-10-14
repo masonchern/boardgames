@@ -33,6 +33,25 @@ export default {
       ],
     },
     {
+      id: 'coordinates',
+      label: 'Coordinates',
+      description: 'Numbers along the sides of the board. The center cell is (0, 0).',
+      type: 'select',
+      default: 'on',
+      choices: [
+        {
+          value: 'on',
+          label: 'On',
+          description: 'Show x and y on the sides. Center is (0, 0); x goes right, y goes up.',
+        },
+        {
+          value: 'off',
+          label: 'Off',
+          description: 'No coordinate numbers on the board.',
+        },
+      ],
+    },
+    {
       id: 'turnSeconds',
       label: 'Time per turn',
       description: 'Seconds each player has to make a move. Running out of time loses the game.',

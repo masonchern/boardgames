@@ -62,3 +62,10 @@ UPDATE (Oct 2026): rule changes for NORMAL mode only (advanced mode is unchanged
    L shape (two cards in a row plus a third beside them) is not allowed.
 4. A challenged player (both modes) may use ALL the cards left in the deck. In normal mode
    they are also free of the straight-line rule: any number of cards, any shape, anywhere.
+
+----------------------------------------------------------------------
+UPDATE (Oct 2026): optional coordinates on the board (both modes)
+
+The setup screen has a Coordinates setting (on by default). When on, x and y numbers sit on
+the sides of the board. The center cell is (0, 0); x increases to the right, y increases up.
+Turn it off to hide the numbers. Gameplay is the same either way.

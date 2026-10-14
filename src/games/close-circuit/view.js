@@ -213,6 +213,7 @@ export function mount(container, api) {
           t('cc.how.adv9'),
         ]
       : [t('cc.how.n1'), t('cc.how.n2'), t('cc.how.n3'), t('cc.how.n4'), t('cc.how.n5'), t('cc.how.n6')];
+    if (state?.options.coordinates !== 'off') lines.push(t('cc.how.coords'));
     howList.replaceChildren(...[...lines, t('cc.how.controls')].map((line) => el('li', {}, line)));
   }
 
@@ -694,6 +695,64 @@ export function mount(container, api) {
         ctx.stroke();
       }
     }
+
+    drawCoordinates(ctx, g, s);
+  }
+
+  /**
+   * Axis numbers on the sides of the view. Display coords treat the center cell as (0, 0),
+   * x increasing right, y increasing up (so they match a normal x-y plane, not grid indexes).
+   */
+  function drawCoordinates(ctx, g, s) {
+    if (state.options.coordinates === 'off') return;
+    const origin = centerCell(g);
+    const step = s >= 32 ? 1 : s >= 20 ? 2 : s >= 12 ? 5 : s >= 7 ? 10 : 25;
+    const [vx0, vy0] = toCell(-s, -s);
+    const [vx1, vy1] = toCell(cssW + s, cssH + s);
+    const x0 = Math.max(0, vx0);
+    const x1 = Math.min(g - 1, vx1);
+    const y0 = Math.max(0, vy0);
+    const y1 = Math.min(g - 1, vy1);
+    if (x1 < x0 || y1 < y0) return;
+
+    const [gx, gy] = toScreen(0, 0);
+    // Sit just outside the grid when that edge is on screen, otherwise pin to the canvas edge.
+    const labelX = gx >= 28 ? gx - 6 : 14;
+    const labelY = gy >= 22 ? gy - 4 : 12;
+    const fontSize = Math.max(9, Math.min(13, Math.round(s * 0.32)));
+    const zeroSize = fontSize + 1;
+    ctx.save();
+    ctx.lineJoin = 'round';
+
+    const paint = (text, px, py, align, baseline, isZero) => {
+      ctx.font = `${isZero ? 800 : 600} ${isZero ? zeroSize : fontSize}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = align;
+      ctx.textBaseline = baseline;
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = 'rgba(255, 246, 220, 0.9)';
+      ctx.strokeText(text, px, py);
+      ctx.fillStyle = isZero ? '#6e4120' : '#5a3418';
+      ctx.fillText(text, px, py);
+    };
+
+    // Skip the zoom buttons in the top-right corner.
+    const inZoomCorner = (px, py) => px > cssW - 130 && py < 48;
+
+    for (let x = x0; x <= x1; x++) {
+      const n = x - origin;
+      if (n % step !== 0) continue;
+      const px = toScreen(x, 0)[0] + s / 2;
+      if (px < 28 || px > cssW - 8 || inZoomCorner(px, labelY)) continue;
+      paint(String(n), px, labelY, 'center', gy >= 22 ? 'bottom' : 'top', n === 0);
+    }
+    for (let y = y0; y <= y1; y++) {
+      const n = origin - y;
+      if (n % step !== 0) continue;
+      const py = toScreen(0, y)[1] + s / 2;
+      if (py < 18 || py > cssH - 8 || inZoomCorner(labelX, py)) continue;
+      paint(String(n), labelX, py, gx >= 28 ? 'right' : 'left', 'middle', n === 0);
+    }
+    ctx.restore();
   }
 
   // ---- UI refresh ----

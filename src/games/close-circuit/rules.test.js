@@ -39,8 +39,15 @@ test('setup uses defaults: 48 cards, 100x100 grid, 30s + 30s', () => {
   assert.equal(s.options.gridSize, 100);
   assert.equal(s.options.turnSeconds, 30);
   assert.equal(s.options.challengeSeconds, 30);
+  assert.equal(s.options.coordinates, 'on');
   assert.equal(s.phase, 'play');
   assert.equal(rules.getStatus(s).currentPlayerId, 'p1');
+});
+
+test('coordinates can be switched off on the setup screen', () => {
+  const s = newGame({ coordinates: 'off' });
+  assert.equal(s.options.coordinates, 'off');
+  assert.equal(newGame({ coordinates: 'nope' }).options.coordinates, 'on');
 });
 
 test('first card must be in the center; later cards may go anywhere', () => {

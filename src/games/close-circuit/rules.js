@@ -71,6 +71,7 @@ export const DEFAULT_OPTIONS = {
   mode: 'normal', // 'normal' | 'advanced'
   turnSeconds: 30, // time per turn (x); null = no limit
   challengeSeconds: 30, // extra time for a challenged player (y); null = no limit
+  coordinates: 'on', // 'on' | 'off' — axis numbers on the board (center cell is 0,0)
   gridSize: 100,
   deckSize: 48, // normal mode only
   maxPerTurn: 3, // normal mode only
@@ -103,6 +104,7 @@ export function normalizeOptions(o = {}) {
     mode: o.mode === 'advanced' ? 'advanced' : 'normal',
     turnSeconds: seconds(o.turnSeconds, d.turnSeconds, 5, 600),
     challengeSeconds: seconds(o.challengeSeconds, d.challengeSeconds, 0, 600),
+    coordinates: o.coordinates === 'off' ? 'off' : 'on',
     gridSize: clampInt(o.gridSize, d.gridSize, 5, 200),
     deckSize: clampInt(o.deckSize, d.deckSize, 1, 200),
     maxPerTurn: clampInt(o.maxPerTurn, d.maxPerTurn, 1, 10),
