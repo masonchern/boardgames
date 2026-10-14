@@ -225,6 +225,7 @@ const STRINGS = {
     'cc.straight': 'Straight',
     'cc.turn': 'Turn',
     'cc.rotate': '⟳ Rotate',
+    'cc.measure': '📏 Measure',
     'cc.undo': 'Undo',
     'cc.endTurn': 'End turn',
     'cc.submit': 'Submit solution',
@@ -245,6 +246,7 @@ const STRINGS = {
     'cc.straightTitle': 'Straight line (T)',
     'cc.turnTitle': 'Turning line (T)',
     'cc.rotateTitle': 'Rotate (R)',
+    'cc.measureTitle': 'Measure the distance between two cells',
     'cc.undoTitle': 'Undo last card (Z)',
     'cc.card.straight': 'Straight',
     'cc.card.turn': 'Turn',
@@ -312,10 +314,11 @@ const STRINGS = {
     'cc.measure.x': 'Δx {n}',
     'cc.measure.y': 'Δy {n}',
     'cc.measure.xy': 'Δx {x} · Δy {y}',
+    'cc.hint.measurePick': 'Tap a cell to start measuring from there. Tap Measure again to cancel.',
     'cc.hint.measure':
-      'Measuring from ({x}, {y}): {len}. Scroll to change length along x, Shift+scroll for y. Move the pointer to another cell, or right-click the start / press Esc to stop. Rotate with R.',
+      'Measuring from ({x}, {y}): {len}. Tap another cell to move the end (on a computer, scroll for x, Shift+scroll for y). Tap Measure, right-click the start, or press Esc to stop.',
     'cc.how.measure':
-      'Right-click a cell to measure. Scroll the wheel (or left/right on a trackpad) to change the length along x; hold Shift and scroll for y. You can also move the pointer to another cell. The number is how many cells apart (center is 0, 0). Right-click the start again or press Esc to stop. Rotate with R or the Rotate button.',
+      'Tap Measure, tap a start cell, then tap the other cell. On a computer you can also right-click a cell and scroll (Shift+scroll for y). The number is how many cells apart (center is 0, 0). Tap Measure again or press Esc to stop.',
     'cc.how.controls':
       'Controls: click or tap a cell to place · Rotate button (R) turns the selected card · T switches straight/turn · Z undoes · drag to pan · scroll wheel, pinch or the − / + buttons to zoom (Ctrl+wheel zooms while measuring) · Fit zooms in as far as possible while still showing every card plus a 2-tile border. Red dots mark open line ends.',
     'cc.how.adv1':
@@ -568,6 +571,7 @@ STRINGS['zh-Hant'] = {
   'cc.straight': '直線',
   'cc.turn': '轉彎',
   'cc.rotate': '⟳ 旋轉',
+  'cc.measure': '📏 測量',
   'cc.undo': '復原',
   'cc.endTurn': '結束回合',
   'cc.submit': '提交解答',
@@ -588,6 +592,7 @@ STRINGS['zh-Hant'] = {
   'cc.straightTitle': '直線（T）',
   'cc.turnTitle': '轉彎（T）',
   'cc.rotateTitle': '旋轉（R）',
+  'cc.measureTitle': '測量兩格之間的距離',
   'cc.undoTitle': '復原上一張（Z）',
   'cc.card.straight': '直線',
   'cc.card.turn': '轉彎',
@@ -654,10 +659,11 @@ STRINGS['zh-Hant'] = {
   'cc.measure.x': 'Δx {n}',
   'cc.measure.y': 'Δy {n}',
   'cc.measure.xy': 'Δx {x} · Δy {y}',
+  'cc.hint.measurePick': '點一格作為測量起點。再按「測量」可取消。',
   'cc.hint.measure':
-    '從 ({x}, {y}) 測量：{len}。滾輪左右改 x 方向長度，Shift+滾輪改 y。也可把指標移到另一格。再右鍵起點或按 Esc 結束。旋轉請用 R。',
+    '從 ({x}, {y}) 測量：{len}。再點另一格改終點（電腦也可滾輪改 x，Shift+滾輪改 y）。再按「測量」、右鍵起點或 Esc 結束。',
   'cc.how.measure':
-    '在格子上按右鍵開始測量。滾輪（或觸控板左右滑）改變 x 方向長度；按住 Shift 再滾改變 y。也可把指標移到另一格。數字是相隔幾格（中央為 0, 0）。再右鍵起點或按 Esc 結束。旋轉請用 R 或旋轉鈕。',
+    '按「測量」，再點起點格子，再點終點格子。電腦也可在格子上按右鍵，然後滾輪改 x 方向長度（Shift+滾輪改 y）。數字是相隔幾格（中央為 0, 0）。再按「測量」或 Esc 結束。',
   'cc.how.controls':
     '操作：點格子放牌 · 旋轉鈕（R）轉動目前選中的牌 · T 切換直線／轉彎 · Z 復原 · 拖曳平移 · 滾輪、雙指或 −／＋ 縮放（測量時 Ctrl+滾輪仍可縮放） ·「剛好」會放到能看到每張牌再加兩格邊。紅點標示未接線頭。',
   'cc.how.adv1':

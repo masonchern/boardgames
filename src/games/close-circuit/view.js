@@ -85,7 +85,8 @@ export function mount(container, api) {
   let cardRots = {}; // cardId -> rotation
   const rotOf = (card) => cardRots[card.id] ?? 0;
   let hover = null; // { x, y } cell under the pointer
-  // Ruler: right-click a cell, then scroll or move to another cell to read the length.
+  // Ruler: Measure button (or right-click), then tap/scroll the other end. View-only.
+  let measuring = false; // true after tapping Measure, until it is turned off
   let measure = null; // { ox, oy, x, y } origin and far end, in grid cells
   let showOpenEnds = true;
   let timeoutSentFor = null;
@@ -168,6 +169,17 @@ export function mount(container, api) {
   const handPanel = el('div', { class: 'cc__handpanel' }, handLabel, handCards, handHelp);
   handPanel.hidden = true;
   const rotateBtn = el('button', { class: 'btn btn--ghost', title: t('cc.rotateTitle'), onclick: rotate }, t('cc.rotate'));
+  const measureBtn = el(
+    'button',
+    {
+      class: 'btn btn--ghost cc__measure',
+      title: t('cc.measureTitle'),
+      'aria-label': t('cc.measureTitle'),
+      'aria-pressed': 'false',
+      onclick: toggleMeasure,
+    },
+    t('cc.measure'),
+  );
   const countEl = el('div', { class: 'cc__count muted' });
   const undoBtn = el('button', { class: 'btn btn--ghost', title: t('cc.undoTitle'), onclick: undo }, t('cc.undo'));
   const endBtn = el('button', { class: 'btn', onclick: submit }, t('cc.endTurn'));
@@ -182,7 +194,7 @@ export function mount(container, api) {
     'div',
     { class: 'cc__controls' },
     handPanel,
-    el('div', { class: 'cc__group' }, kindGroup, rotateBtn),
+    el('div', { class: 'cc__group' }, kindGroup, rotateBtn, measureBtn),
     poolNote,
     el('div', { class: 'cc__group' }, countEl, undoBtn, endBtn),
     el('div', { class: 'cc__group' }, challengeBtn.node, solveBtn.node, resignBtn.node),
@@ -460,9 +472,47 @@ export function mount(container, api) {
     return true;
   }
 
+  function syncMeasureButton() {
+    measureBtn.classList.toggle('is-on', measuring);
+    measureBtn.setAttribute('aria-pressed', measuring ? 'true' : 'false');
+    canvas.classList.toggle('is-measuring', measuring);
+  }
+
+  function setMeasuring(on) {
+    measuring = on;
+    if (!on) measure = null;
+    syncMeasureButton();
+    updateHint();
+    scheduleDraw();
+  }
+
+  function toggleMeasure() {
+    setMeasuring(!measuring);
+  }
+
+  /** Drop or move the ruler on a cell. First tap is the start; later taps move the end. */
+  function measureAt(x, y) {
+    if (!state) return;
+    const g = state.options.gridSize;
+    if (x < 0 || y < 0 || x >= g || y >= g) return;
+    if (!measure) measure = { ox: x, oy: y, x, y };
+    else {
+      measure.x = x;
+      measure.y = y;
+    }
+    measuring = true;
+    syncMeasureButton();
+    updateHint();
+    scheduleDraw();
+  }
+
   /** Tap an empty cell to place; tap a tile you just placed to tweak it. */
   function tapAt(px, py) {
     const [x, y] = toCell(px, py);
+    if (measuring) {
+      measureAt(x, y);
+      return;
+    }
     const editing = editableDraftAt(x, y);
     if (editing) {
       const localX = (px - toScreen(x, y)[0]) / cam.size;
@@ -1057,8 +1107,10 @@ export function mount(container, api) {
   /** Default hint line, including a live "this closes the circuit" check for the current draft. */
   function updateHint() {
     hint.classList.remove('is-error', 'is-good');
-    if (!state || state.phase === 'over') {
+    if (!state) {
       hint.textContent = '';
+    } else if (measuring && !measure) {
+      hint.textContent = t('cc.hint.measurePick');
     } else if (measure) {
       const origin = centerCell(state.options.gridSize);
       hint.textContent = t('cc.hint.measure', {
@@ -1066,6 +1118,8 @@ export function mount(container, api) {
         y: origin - measure.oy,
         len: measureText(),
       });
+    } else if (state.phase === 'over') {
+      hint.textContent = '';
     } else if (draft.some(hasPosition) && isWinningBoard(mergedBoard(), state.options)) {
       hint.textContent = t('cc.hint.win');
       hint.classList.add('is-good');
@@ -1197,7 +1251,12 @@ export function mount(container, api) {
         measure.y = y;
       }
     }
-    canvas.classList.toggle('is-tuning', Boolean(!dragging?.moved && editableDraftAt(x, y)));
+    canvas.classList.toggle('is-tuning', Boolean(!measuring && !dragging?.moved && editableDraftAt(x, y)));
+    if (measuring) {
+      updateHint();
+      scheduleDraw();
+      return;
+    }
     if (state && state.phase !== 'over' && !dragging?.moved) {
       if (editableDraftAt(x, y)) {
         updateHint();
@@ -1269,24 +1328,20 @@ export function mount(container, api) {
   canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    // Long-press on a phone also fires this; measuring is a mouse/trackpad action.
+    // Long-press on a phone also fires this; phones use the Measure button instead.
     if (e.pointerType === 'touch' || !state) return;
     const [x, y] = toCell(...canvasPoint(e));
     const g = state.options.gridSize;
     if (x < 0 || y < 0 || x >= g || y >= g) return;
-    if (measure && measure.ox === x && measure.oy === y) measure = null;
-    else measure = { ox: x, oy: y, x, y };
-    updateHint();
-    scheduleDraw();
+    if (measure && measure.ox === x && measure.oy === y) setMeasuring(false);
+    else measureAt(x, y);
   });
 
   const onKey = (e) => {
     if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     const k = e.key.toLowerCase();
-    if (k === 'escape' && measure) {
-      measure = null;
-      updateHint();
-      scheduleDraw();
+    if (k === 'escape' && (measuring || measure)) {
+      setMeasuring(false);
     } else if (k === 'r') rotate();
     else if (k === 't') setKind(kind === 'straight' ? 'turn' : 'straight');
     else if (k === 'z' || k === 'backspace') undo();
@@ -1316,6 +1371,9 @@ export function mount(container, api) {
     turnBtn.title = t('cc.turnTitle');
     rotateBtn.textContent = t('cc.rotate');
     rotateBtn.title = t('cc.rotateTitle');
+    measureBtn.textContent = t('cc.measure');
+    measureBtn.title = t('cc.measureTitle');
+    measureBtn.setAttribute('aria-label', t('cc.measureTitle'));
     undoBtn.textContent = t('cc.undo');
     undoBtn.title = t('cc.undoTitle');
     openEndsLabel.textContent = t('cc.openEnds');

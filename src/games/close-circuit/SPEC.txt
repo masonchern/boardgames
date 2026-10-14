@@ -82,8 +82,10 @@ Advanced hand play: the card type is fixed by the hand, so only the right side r
 ----------------------------------------------------------------------
 UPDATE (Oct 2026): measure distance on the board
 
-Right-click a cell to drop a start point, then scroll the wheel (or a trackpad left/right)
-to change how far the other end is along x. Shift+scroll moves along y. Moving the pointer
-to another cell also works. The label is the number of cells apart in display coordinates
-(center = 0, 0). Right-click the start again or press Esc to stop. Rotate with R / the
-Rotate button (right-click is no longer rotate).
+Tap the Measure button, tap a start cell, then tap the other cell. Taps do not place cards
+while Measure is on; tap Measure again to stop. On a computer you can also right-click a
+cell, then scroll the wheel (or a trackpad left/right) to change how far the other end is
+along x. Shift+scroll moves along y. Moving the pointer to another cell also works. The
+label is the number of cells apart in display coordinates (center = 0, 0). Right-click the
+start again or press Esc to stop. Rotate with R / the Rotate button (right-click is no
+longer rotate). Long-press on a phone is ignored so it does not steal a placement tap.
